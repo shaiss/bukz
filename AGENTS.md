@@ -32,7 +32,8 @@ in their own app.** bukz is strictly read-only against YNAB and Xero.
 ```sh
 node bin/bukz.mjs help            # full CLI reference
 node bin/bukz.mjs check           # config doctor (safe: booleans only)
-node bin/bukz.mjs pull            # fetch books → data/transactions.json
+node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental)
+node bin/bukz.mjs pull --full     # ignore the cursor, re-fetch everything
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, uncategorized, match, categories, budgets)
 
 node --test                        # run all tests
@@ -50,7 +51,8 @@ selects the source.
 bin/bukz.mjs            dispatcher → dynamic import of src/commands/<name>.mjs
 src/cli.mjs             arg parsing + shared output helpers (parse, num, out)
 src/env.mjs             tiny .env loader (zero deps)
-src/data.mjs            cache I/O; data/transactions.json is the analysis input
+src/data.mjs            cache I/O (atomic writes + incremental merge);
+                        data/transactions.json is the analysis input
 src/providers/          ynab.mjs, xero.mjs — normalize to the shared transaction
                         shape documented in providers/index.mjs
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
@@ -77,6 +79,13 @@ fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
   mean/stdev. `robustZ` has a documented fallback for zero-spread histories.
 - **All CLI output is JSON on stdout**, led by a `meta` block so skills can judge
   staleness. Never `console.log` debug noise from a command.
+- **Pull is incremental.** `pull` merges deltas into the existing cache by
+  transaction `id`, so repeated pulls are cheap and the cache's history only grows.
+  A `cursor` field in the cache holds the provider's delta token (YNAB
+  `server_knowledge`; Xero has none and re-fetches by date window). `--full`
+  bypasses the cursor and re-fetches everything; switching providers forces a full
+  fetch so two sources are never blended into one cache. Writes are atomic
+  (temp-file + rename), so an interrupted pull leaves the prior cache intact.
 
 ## Adding things
 

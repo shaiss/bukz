@@ -21,6 +21,7 @@ Setup & data
   check           Verify config and API connectivity (never prints secrets)
   budgets         List YNAB budgets / Xero organisations
   pull            Fetch transactions + categories into data/transactions.json
+                  Incremental by default (deltas only); --full re-fetches everything
   categories      List categories from the local cache
 
 Analysis (read from the cache; all output is JSON)
@@ -37,8 +38,10 @@ Analysis (read from the cache; all output is JSON)
 
 Common options
   --provider ynab|xero   Default: BUKZ_PROVIDER in .env, else ynab
-  --since YYYY-MM-DD     pull: fetch window (default 365 days back)
+  --since YYYY-MM-DD     pull (full only): initial fetch window (default 365 days back)
                          analysis: filter cached transactions
+  --full                 pull: ignore the cache cursor and re-fetch everything
+                         (also forced when switching providers)
   --in FILE              Analyze a file instead of the cache
                          (demo mode: --in fixtures/sample.json)
 `;

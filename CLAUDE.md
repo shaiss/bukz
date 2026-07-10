@@ -22,7 +22,8 @@ When adding features, keep this split: never have a skill ask Claude to compute 
 ```sh
 node bin/bukz.mjs help            # full CLI reference
 node bin/bukz.mjs check           # config doctor (safe: booleans only)
-node bin/bukz.mjs pull            # fetch books → data/transactions.json
+node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental by default)
+node bin/bukz.mjs pull --full     # re-fetch everything (ignore the cache cursor)
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, uncategorized, match, categories, budgets)
 
 node --test                        # run all tests

@@ -118,7 +118,10 @@ export async function fetchTransactions({ since } = {}) {
     }
     if (txns.length < PAGE_SIZE) break;
   }
-  return out;
+  // Xero has no knowledge token; the caller drives incremental via a since_date
+  // against the newest cached date. Merge is by id, so re-fetched rows simply
+  // overwrite their older selves — safe even if the window overlaps.
+  return { transactions: out, deleted: new Set(), knowledge: null };
 }
 
 function sinceClause(since) {

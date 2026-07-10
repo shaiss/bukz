@@ -60,12 +60,24 @@ export async function fetchCategories() {
   return categories;
 }
 
-export async function fetchTransactions({ since } = {}) {
-  const query = since ? `?since_date=${since}` : '';
+export async function fetchTransactions({ since, knowledge } = {}) {
+  // Delta sync: pass the last server_knowledge to receive only changed
+  // transactions since then (plus a new knowledge value to persist). Without a
+  // cursor we do a full fetch — the two paths share the same normalization.
+  const params = new URLSearchParams();
+  if (since) params.set('since_date', since);
+  if (knowledge !== undefined) params.set('last_knowledge_of_server', knowledge);
+  const query = params.toString() ? `?${params}` : '';
   const data = await get(`/budgets/${budgetId()}/transactions${query}`);
   const out = [];
+  const deletedParentIds = new Set();
   for (const t of data.transactions) {
-    if (t.deleted) continue;
+    // A delta stream includes deletions: record the parent id so the merge can
+    // evict any cached rows (parent + its split lines) before re-adding survivors.
+    if (t.deleted) {
+      deletedParentIds.add(t.id);
+      continue;
+    }
     if (t.subtransactions?.length) {
       // Split transactions: analyze each line, not the opaque parent total.
       for (const s of t.subtransactions) {
@@ -76,7 +88,11 @@ export async function fetchTransactions({ since } = {}) {
       out.push(normalize(t));
     }
   }
-  return out;
+  return {
+    transactions: out,
+    deleted: deletedParentIds,
+    knowledge: data.server_knowledge ?? null,
+  };
 }
 
 function normalize(t, sub) {

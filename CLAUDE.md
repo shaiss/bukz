@@ -14,7 +14,7 @@ When adding features, keep this split: never have a skill ask Claude to compute 
 ## Golden rules
 
 1. **NEVER read `.env`** (it is also permission-denied in `.claude/settings.json`). It holds API tokens. Config debugging goes through `node bin/bukz.mjs check`, which prints booleans only. Never ask the user to paste a token into chat; if they do, tell them to revoke and rotate it.
-2. **bukz is read-only** against YNAB/Xero. No write-backs, no money movement. Skills flag issues; the human applies fixes in their app.
+2. **Flag, then offer to apply with confirmation.** Analysis output is leads for triage. Write commands (`recategorize`, YNAB only) are dry-run by default; a skill may apply a fix only after showing the user the planned edit and getting their explicit OK (`--yes`). No money movement; splits are refused; categories must exist. The human remains the source of truth.
 3. **Flag, don't verdict**: analysis output is leads for triage, and reports should present them that way.
 
 ## Commands

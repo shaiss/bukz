@@ -11,6 +11,7 @@ const COMMANDS = {
   mismatches: () => import('../src/commands/mismatches.mjs'),
   uncategorized: () => import('../src/commands/uncategorized.mjs'),
   match: () => import('../src/commands/match.mjs'),
+  recategorize: () => import('../src/commands/recategorize.mjs'),
 };
 
 const USAGE = `bukz — the AI bookkeeper's toolbelt
@@ -35,6 +36,11 @@ Analysis (read from the cache; all output is JSON)
   uncategorized   Transactions with no category, and unapproved ones
   match           Find transactions matching a receipt
                     --amount 42.50 --date YYYY-MM-DD [--window DAYS] [--payee TEXT]
+
+Write (mutating — YNAB only; DRY-RUN by default, --yes to apply)
+  recategorize    Change one transaction's category
+                    --txn <id> --category "<name>" [--yes|--apply]
+                    Refuses splits; category must exist in the cache.
 
 Common options
   --provider ynab|xero   Default: BUKZ_PROVIDER in .env, else ynab

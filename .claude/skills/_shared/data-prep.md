@@ -42,7 +42,27 @@ These live in **AGENTS.md § Golden rules** and are always in context — they a
 repeated in each skill:
 
 - **NEVER read `.env`.** Config questions → `node bin/bukz.mjs check` (booleans only).
-- **bukz is read-only.** Flag issues; the human applies every fix in YNAB/Xero.
 - **Flag, don't verdict.** Analysis output is leads for triage, never a confirmed error.
+- **Writes need explicit confirmation.** Mutating commands (currently
+  `recategorize`) are dry-run by default. To apply a change you MUST first show the
+  user the planned edit (run without `--yes`), get their explicit OK, and only then
+  re-run with `--yes`. Never pass `--yes` without that confirmation.
 
 Each skill's own **Rules** section lists only what is unique to that skill.
+
+## Writes (mutating commands)
+
+bukz's first write command is `recategorize` (YNAB only). It follows a strict
+safety model — the same model future writes should follow:
+
+1. **Dry-run first.** `recategorize --txn <id> --category "<name>"` prints the
+   planned change with `applied: false` and touches nothing.
+2. **Confirm, then apply.** Show the user the planned edit. On their explicit OK,
+   re-run with `--yes` (or `--apply`) to write it to YNAB. The command refreshes
+   the local cache after a successful write.
+3. **Hard limits.** Split transactions are refused (YNAB can't recategorize one
+   line of a split via the API). Category names must exist in the cached
+   `categories` list — never write an invented name. Xero is not supported yet.
+
+The golden rule is now "flag, then offer to apply with confirmation" — not
+"flag, don't fix". See AGENTS.md § Golden rules.

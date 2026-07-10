@@ -17,3 +17,6 @@ node_modules/
 
 # Machine-local agent permissions (settings.json is shared; *.local is not)
 .claude/settings.local.json
+
+# Local agent session/plan artifacts
+.zcode/

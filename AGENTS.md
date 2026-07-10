@@ -10,8 +10,8 @@ bukz turns an AI coding agent into a professional bookkeeper's team. A zero-depe
 Node CLI (`bin/bukz.mjs` + `src/`) does all the deterministic work — fetching
 transactions, statistics, sampling, matching — and emits JSON. A set of skills
 (`.claude/skills/`) consume that JSON and apply bookkeeper *judgment*. The golden rule:
-**numbers come from code, opinions come from the model, and the user applies every fix
-in their own app.** bukz is strictly read-only against YNAB and Xero.
+**numbers come from code, opinions come from the model, and the user confirms every fix
+before it's applied.** bukz writes only via explicit, confirmed commands — never silently.
 
 ## Golden rules (non-negotiable)
 
@@ -19,8 +19,10 @@ in their own app.** bukz is strictly read-only against YNAB and Xero.
    `.claude/settings.json`. Config debugging goes through `node bin/bukz.mjs check`,
    which prints booleans only. Never ask the user to paste a token into chat; if they
    do, tell them to revoke and rotate it.
-2. **bukz is read-only** against YNAB/Xero. No write-backs, no money movement. Skills
-   flag issues; the human applies fixes in their app.
+2. **Writes need explicit confirmation.** Mutating commands (`recategorize`, YNAB only)
+   are dry-run by default. A skill applies a fix only after showing the user the planned
+   edit and getting their explicit OK, then passes `--yes`. No money movement; splits are
+   refused; category names must exist in the cache. The human is the source of truth.
 3. **Flag, don't verdict.** Analysis output is leads for triage, presented that way.
 4. **Keep the architecture split.** Never have a skill ask the model to compute
    statistics, and never have the CLI make judgment calls.
@@ -35,6 +37,7 @@ node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental)
 node bin/bukz.mjs pull --full     # ignore the cursor, re-fetch everything
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, uncategorized, match, categories, budgets)
+node bin/bukz.mjs recategorize    # MUTATING (YNAB): --txn <id> --category "<name>"; dry-run unless --yes
 
 node --test                        # run all tests
 node --test tests/analysis.test.mjs # run one test file
@@ -57,7 +60,7 @@ src/providers/          ynab.mjs, xero.mjs — normalize to the shared transacti
                         shape documented in providers/index.mjs
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
                         anomalies.mjs, mismatches.mjs, sample.mjs
-src/commands/           one thin wrapper per CLI command
+src/commands/           one thin wrapper per CLI command (read + write/mutating)
 fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
                         matching test assertion in tests/analysis.test.mjs
 .claude/skills/         the AI team: bukz-setup, spot-check, anomalies,

@@ -91,6 +91,10 @@ fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
 ## Conventions
 
 - All command output is JSON — `out()` in `src/cli.mjs`. Skills read it; humans don't.
+- **Findings tables always include the `account` field.** A bookkeeper needs to know
+  which account/card a flagged transaction is on to locate and fix it; "account" is
+  also load-bearing context (a "duplicate" across two accounts usually isn't one).
+  The data always carries it (72/72 fixture rows do); show `—` only when it's null.
 - Numeric CLI args come through `num()` in `src/cli.mjs`. Empty/whitespace strings
   must be rejected (they coerce to `0` via `Number("")`), and calendar dates must be
   round-trip validated (JS rolls `2026-02-31` → `2026-03-03`).

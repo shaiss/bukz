@@ -16,9 +16,9 @@ Propose categories for everything uncategorized, and review everything unapprove
    - Best evidence: the same payee's categorized history elsewhere in the cache.
    - Next: merchant-type inference from the payee name and amount.
    - A bare "Check #204" is unknowable from data — put it in the ask-the-human pile, don't guess.
-5. **Report** with confidence, ask-pile last:
+5. **Report** with confidence, ask-pile last. Include each transaction's `account` (show `—` if none) so the user can find the row in their app:
 
-   | Date | Payee | Amount | Proposed category | Confidence | Basis |
+   | Date | Payee | Account | Amount | Proposed category | Confidence | Basis |
 
 6. **Unapproved transactions:** flag any that also look mis-categorized or anomalous; otherwise list them briefly for one-click approval by the user in their app.
 

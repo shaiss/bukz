@@ -18,9 +18,9 @@ The CLI flags candidates mechanically; **your job is triage** — separating pla
    - `missingRecurring` — steady cadence gone quiet. Three stories: cancelled service (fine), failed payment (bad), missed entry (bookkeeping bug). Ask which.
    - `newLargePayees` — first-ever payee with a top-decile amount. Fraud check: "did you expect this?"
    - `largest` — top amounts, context for everything above.
-4. **Report** severity-ordered:
+4. **Report** severity-ordered. Every finding must name which **account** its transaction(s) are on (read the `account` field) — this is load-bearing context, not decoration: a "duplicate" across two different accounts is usually *not* a duplicate, and knowing the card narrows the search. For payee-level findings that span accounts, list them or say "mixed":
 
-   | Severity | Issue | Evidence | Likely explanation | Recommended action |
+   | Severity | Account | Issue | Evidence | Likely explanation | Recommended action |
 
    End with the `uncategorizedCount` / `unapprovedCount` line and suggest the `triage` skill if either is nonzero.
 

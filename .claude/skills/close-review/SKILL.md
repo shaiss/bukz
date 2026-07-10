@@ -22,7 +22,7 @@ The full monthly checkup: every bukz check, one synthesized report, one action c
    - **🔴 Fix before closing:** likely errors (duplicates, wrong categories, sign errors, suspected missing entries).
    - **🟡 Verify:** plausible-but-unconfirmed (refunds, new payees, stopped recurrences).
    - **🟢 Housekeeping:** uncategorized/unapproved counts, spot-check pass rate.
-   - **Action checklist:** numbered, ordered by severity, each item a concrete edit the user can make in YNAB/Xero.
+   - **Action checklist:** numbered, ordered by severity, each item a concrete edit the user can make in YNAB/Xero — and naming the **account** the flagged transaction is on (read `account`) so the user can find it.
 6. **Offer to save** the report to `reports/<YYYY-MM>-close.md` (gitignored).
 
 ## Rules

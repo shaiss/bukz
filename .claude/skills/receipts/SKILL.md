@@ -22,7 +22,7 @@ Turn receipt images/PDFs into ledger rows and match them to real transactions. F
    `date,merchant,amount,currency,category_suggested,payment_method,source_file,matched_txn_id,status,notes`
    (status: `matched` / `unmatched` / `needs-review`.)
 6. **Archive:** move the file to `receipts/processed/` renamed `YYYY-MM-DD_<merchant-slug>_<amount>.<ext>`.
-7. **Report:** one table for the batch + a callout list of unmatched receipts.
+7. **Report:** one table for the batch (include each match's account, from the transaction's `account` field) + a callout list of unmatched receipts.
 
 ## Rules
 

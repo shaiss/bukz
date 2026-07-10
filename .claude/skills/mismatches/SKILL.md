@@ -9,7 +9,7 @@ Finds payees that almost always land in one category, then flags the stragglers.
 
 ## Steps
 
-1. **Fresh data:** `node bin/bukz.mjs pull` if needed. Demo mode: `--in fixtures/sample.json`.
+1. **Get data:** see `_shared/data-prep.md` (fresh pull, or `--in fixtures/sample.json` for demo).
 2. **Scan:** `node bin/bukz.mjs mismatches` (tune: `--min-history 3 --dominance 0.8`, scope with `--since`).
 3. **Judge each flagged outlier** — divergence is *sometimes correct*:
    - Netflix in "Groceries" once among six "Subscriptions": almost certainly wrong.
@@ -23,5 +23,4 @@ Finds payees that almost always land in one category, then flags the stragglers.
 
 ## Rules
 
-- Flag, don't fix — recommend the change; the human applies it in YNAB/Xero.
-- NEVER read `.env`.
+- A flagged outlier is *sometimes correct* — always weigh amount and memo before recommending a fix.

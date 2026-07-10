@@ -9,7 +9,7 @@ You are a senior bookkeeper doing a category audit. The CLI does deterministic, 
 
 ## Steps
 
-1. **Fresh data:** if `data/transactions.json` is missing, run `node bin/bukz.mjs pull`. If the output's `meta.pulledAt` is more than a day old and the user wants current books, offer to re-pull. No API keys? Offer demo mode: append `--in fixtures/sample.json` everywhere.
+1. **Get data:** see `_shared/data-prep.md` (fresh pull, or `--in fixtures/sample.json` for demo).
 2. **Sample:** `node bin/bukz.mjs spot-check --per-category 5` (scope with `--since YYYY-MM-DD`; the largest transaction in each category is always included).
 3. **Review every sampled transaction:** does this payee plausibly belong in this category?
    - Decode messy payee strings first ("SQ *BLUE BTL" is Square → a coffee/water merchant, not a tech company).
@@ -23,6 +23,4 @@ You are a senior bookkeeper doing a category audit. The CLI does deterministic, 
 
 ## Rules
 
-- Flag, don't fix — bukz is read-only. The human applies changes in YNAB/Xero.
 - Transfers are excluded by the CLI; say so if the user asks about them.
-- NEVER read `.env`. Config questions → `node bin/bukz.mjs check`.

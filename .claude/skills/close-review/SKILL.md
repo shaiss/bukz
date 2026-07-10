@@ -10,7 +10,7 @@ The full monthly checkup: every bukz check, one synthesized report, one action c
 ## Steps
 
 1. **Scope:** confirm the period (default: last full calendar month) and set `--since` accordingly — but run anomalies **without** `--since` too, because missing-recurring detection needs history.
-2. **Pull fresh:** `node bin/bukz.mjs pull` (demo mode: `--in fixtures/sample.json` on the analysis commands instead).
+2. **Get data:** see `_shared/data-prep.md` (fresh pull; for demo, pass `--in fixtures/sample.json` to each analysis command instead).
 3. **Run the team**, in this order:
    - `node bin/bukz.mjs anomalies`
    - `node bin/bukz.mjs mismatches`
@@ -28,4 +28,3 @@ The full monthly checkup: every bukz check, one synthesized report, one action c
 ## Rules
 
 - One deduplicated report — a transaction flagged by two checks appears once, with both pieces of evidence.
-- Flag, don't fix. NEVER read `.env`.

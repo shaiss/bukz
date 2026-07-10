@@ -26,4 +26,4 @@ Goal: get from fresh clone to a working `pull` **without the user's API token ev
 
 ## No keys yet?
 
-Everything works on demo data: append `--in fixtures/sample.json` to any analysis command and offer a tour.
+Everything works on demo data — see `_shared/data-prep.md` § Demo mode. Offer a tour.

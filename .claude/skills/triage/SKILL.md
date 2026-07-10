@@ -9,9 +9,9 @@ Propose categories for everything uncategorized, and review everything unapprove
 
 ## Steps
 
-1. **Fresh data:** `node bin/bukz.mjs pull` if needed. Demo mode: `--in fixtures/sample.json`.
+1. **Get data:** see `_shared/data-prep.md` (fresh pull, or `--in fixtures/sample.json` for demo).
 2. **List the inbox:** `node bin/bukz.mjs uncategorized` (output is capped at 100 rows per bucket; the `count` field has the true total — say if you're only seeing a page).
-3. **Load the vocabulary:** `node bin/bukz.mjs categories` — only ever propose categories that actually exist in the user's budget.
+3. **Load the vocabulary:** see `_shared/data-prep.md` (only ever propose categories that exist in the user's budget).
 4. **Propose a category for each uncategorized transaction:**
    - Best evidence: the same payee's categorized history elsewhere in the cache.
    - Next: merchant-type inference from the payee name and amount.
@@ -24,6 +24,4 @@ Propose categories for everything uncategorized, and review everything unapprove
 
 ## Rules
 
-- bukz is read-only — the user applies categories in YNAB/Xero (write-back is on the roadmap).
 - Never invent a category name that isn't in the `categories` output.
-- NEVER read `.env`.

@@ -9,7 +9,7 @@ The CLI flags candidates mechanically; **your job is triage** — separating pla
 
 ## Steps
 
-1. **Fresh data:** `node bin/bukz.mjs pull` if the cache is missing/stale. Demo mode: `--in fixtures/sample.json`.
+1. **Get data:** see `_shared/data-prep.md` (fresh pull, or `--in fixtures/sample.json` for demo).
 2. **Scan:** `node bin/bukz.mjs anomalies` (tune: `--z 3.5 --window 3 --top 5`, scope with `--since`).
 3. **Triage each bucket:**
    - `duplicates` — same payee+amount within the window. Two coffees in a weekend: benign. A subscription, rent, or insurance premium twice: almost certainly a double charge.
@@ -27,4 +27,4 @@ The CLI flags candidates mechanically; **your job is triage** — separating pla
 ## Rules
 
 - Every flag is a *lead*, not a verdict — never present a flag as a confirmed error.
-- Flag, don't fix. NEVER read `.env`.
+- (Shared rules — never read `.env`, read-only, flag-don't-fix — live in `_shared/data-prep.md` / AGENTS.md.)

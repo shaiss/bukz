@@ -60,6 +60,7 @@ fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
                         matching test assertion in tests/analysis.test.mjs
 .claude/skills/         the AI team: bukz-setup, spot-check, anomalies,
                         mismatches, triage, receipts, close-review
+.claude/skills/_shared/ shared skill content (see below); not a skill itself
 .claude/settings.json   permission policy (.env is deny-listed)
 ```
 
@@ -87,6 +88,23 @@ fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
   `src/commands/`, register it in `bin/bukz.mjs`, and add a planted fixture + test.
 - **A skill**: `.claude/skills/<name>/SKILL.md` with `name` and `description` YAML
   frontmatter. The skill drives the CLI and applies judgment to its JSON.
+
+### Shared skill content (DRY)
+
+Skills share common mechanics — fresh-data/demo-mode procedures, the
+categories-loading step, and the cross-cutting guardrails (never read `.env`,
+read-only, flag-don't-verdict). To keep skills from restating these:
+
+- **`.claude/skills/_shared/data-prep.md`** holds the shared *procedures*
+  (fresh-data, demo-mode, categories-loading, reading output). Skills reference it
+  with "see `_shared/data-prep.md`" rather than restating the steps. It is **not**
+  a skill (no frontmatter) and is read on demand, not auto-loaded.
+- **`AGENTS.md § Golden rules`** holds the cross-cutting *guardrails* (always-on
+  context). Skills list only the rule **unique to them** in their own `## Rules`
+  section and do not restate `.env`/read-only/flag-don't-fix.
+
+When adding a skill, reuse `_shared/data-prep.md` and add a unique rule only if the
+skill has one.
 
 ## Conventions
 

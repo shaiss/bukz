@@ -1,0 +1,13 @@
+{
+  "name": "bukz",
+  "version": "0.1.0",
+  "description": "The AI bookkeeper's team — Claude Code skills plus a zero-dependency CLI for YNAB and Xero",
+  "type": "module",
+  "bin": { "bukz": "bin/bukz.mjs" },
+  "scripts": {
+    "test": "node --test",
+    "fixtures": "node fixtures/generate.mjs"
+  },
+  "engines": { "node": ">=18.11" },
+  "license": "MIT"
+}

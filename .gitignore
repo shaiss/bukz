@@ -1,0 +1,19 @@
+# Secrets — API tokens live here and must never be committed
+.env
+.env.local
+
+# The user's financial data stays on their machine
+data/*
+!data/.gitkeep
+receipts/inbox/*
+!receipts/inbox/.gitkeep
+receipts/processed/*
+!receipts/processed/.gitkeep
+receipts/ledger.csv
+reports/
+
+node_modules/
+*.log
+
+# Machine-local agent permissions (settings.json is shared; *.local is not)
+.claude/settings.local.json

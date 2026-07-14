@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 const COMMON = {
   provider: { type: 'string' },
   since: { type: 'string' },
+  until: { type: 'string' },
   in: { type: 'string' },
 };
 
@@ -15,6 +16,12 @@ export function parse(argv, extra = {}) {
   });
   if (values.since !== undefined && values.since !== '') {
     assertDate('--since', values.since);
+  }
+  if (values.until !== undefined && values.until !== '') {
+    assertDate('--until', values.until);
+  }
+  if (values.since && values.until && values.since > values.until) {
+    throw new Error(`--since (${values.since}) must not be later than --until (${values.until})`);
   }
   return values;
 }

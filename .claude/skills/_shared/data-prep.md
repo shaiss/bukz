@@ -11,6 +11,9 @@ and **Demo mode** steps below.
 2. If the cache's `meta.pulledAt` is more than a day old **and** the user wants current
    books, offer to re-pull.
 3. `pull` fetches the last 365 days; scope a window with `--since YYYY-MM-DD`.
+   Analysis commands accept both `--since YYYY-MM-DD` and `--until YYYY-MM-DD`
+   to bound the cached transactions reviewed (e.g. `--since 2026-04-01 --until
+   2026-05-31` for an April–May audit).
 
 ## Demo mode
 

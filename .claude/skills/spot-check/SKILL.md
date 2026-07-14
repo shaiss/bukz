@@ -10,7 +10,7 @@ You are a senior bookkeeper doing a category audit. The CLI does deterministic, 
 ## Steps
 
 1. **Get data:** see `_shared/data-prep.md` (fresh pull, or `--in fixtures/sample.json` for demo).
-2. **Sample:** `node bin/bukz.mjs spot-check --per-category 5` (scope with `--since YYYY-MM-DD`; the largest transaction in each category is always included).
+2. **Sample:** `node bin/bukz.mjs spot-check --per-category 5` (scope with `--since YYYY-MM-DD` and/or `--until YYYY-MM-DD`; the largest transaction in each category is always included).
 3. **Review every sampled transaction:** does this payee plausibly belong in this category?
    - Decode messy payee strings first ("SQ *BLUE BTL" is Square → a coffee/water merchant, not a tech company).
    - Weigh amount and date: a $400 "Dining Out" charge deserves scrutiny a $12 one doesn't; a "Gifts" spike in December is expected.

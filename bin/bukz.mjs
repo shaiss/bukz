@@ -45,7 +45,9 @@ Write (mutating — YNAB only; DRY-RUN by default, --yes to apply)
 Common options
   --provider ynab|xero   Default: BUKZ_PROVIDER in .env, else ynab
   --since YYYY-MM-DD     pull (full only): initial fetch window (default 365 days back)
-                         analysis: filter cached transactions
+                         analysis: filter cached transactions to >= this date
+  --until YYYY-MM-DD     analysis: filter cached transactions to <= this date
+                         (bounds a range with --since; ignored by pull)
   --full                 pull: ignore the cache cursor and re-fetch everything
                          (also forced when switching providers)
   --in FILE              Analyze a file instead of the cache

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { saveCache, mergeTransactions } from '../src/data.mjs';
+import { saveCache, mergeTransactions, loadData, meta } from '../src/data.mjs';
 
 // ── mergeTransactions ────────────────────────────────────────────────
 // This is the heart of incremental pull: applying a delta to the cache. A bug
@@ -109,4 +109,73 @@ test('saveCache: overwriting an existing cache does not corrupt it', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ── loadData filtering ───────────────────────────────────────────────
+// --since (lower bound) and --until (upper bound) narrow the cached rows.
+// Both are inclusive (>= / <=), so a same-day --since/--until pair yields a
+// single-day window. Dates are YYYY-MM-DD strings compared lexically, which
+// sorts correctly for that format.
+
+const rangeData = {
+  pulledAt: '2026-07-09T00:00:00.000Z',
+  provider: 'test',
+  transactions: [
+    tx('1', '2026-03-31', -1),
+    tx('2', '2026-04-15', -2),
+    tx('3', '2026-05-15', -3),
+    tx('4', '2026-05-31', -4),
+    tx('5', '2026-06-01', -5),
+  ],
+};
+
+test('loadData: --until filters out transactions after the bound (inclusive)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bukz-cache-'));
+  try {
+    const target = join(dir, 'transactions.json');
+    saveCache(rangeData, target);
+    const { transactions } = loadData({ in: target, until: '2026-05-31' });
+    assert.deepEqual(transactions.map((t) => t.id), ['1', '2', '3', '4']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('loadData: --since + --until bounds an inclusive range', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bukz-cache-'));
+  try {
+    const target = join(dir, 'transactions.json');
+    saveCache(rangeData, target);
+    const { transactions } = loadData({
+      in: target,
+      since: '2026-04-01',
+      until: '2026-05-31',
+    });
+    assert.deepEqual(transactions.map((t) => t.id), ['2', '3', '4']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('loadData: same-day --since and --until yields a single-day window', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bukz-cache-'));
+  try {
+    const target = join(dir, 'transactions.json');
+    saveCache(rangeData, target);
+    const { transactions } = loadData({
+      in: target,
+      since: '2026-05-31',
+      until: '2026-05-31',
+    });
+    assert.deepEqual(transactions.map((t) => t.id), ['4']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('meta: surfaces --until alongside --since', () => {
+  const data = { provider: 'test', pulledAt: '2026-07-09', transactions: [] };
+  const m = meta(data, { since: '2026-04-01', until: '2026-05-31' });
+  assert.equal(m.since, '2026-04-01');
+  assert.equal(m.until, '2026-05-31');
 });

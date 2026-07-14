@@ -42,6 +42,7 @@ export function loadData(opts = {}) {
   const data = JSON.parse(readFileSync(path, 'utf8'));
   let transactions = data.transactions ?? [];
   if (opts.since) transactions = transactions.filter((t) => t.date >= opts.since);
+  if (opts.until) transactions = transactions.filter((t) => t.date <= opts.until);
   return { ...data, transactions };
 }
 
@@ -84,6 +85,7 @@ export function meta(data, opts = {}) {
     provider: data.provider,
     pulledAt: data.pulledAt,
     since: opts.since ?? data.since ?? null,
+    until: opts.until ?? null,
     transactionCount: data.transactions.length,
   };
 }

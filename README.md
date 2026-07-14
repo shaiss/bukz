@@ -43,7 +43,7 @@ Honest caveat: no local setup can make secrets provably invisible to a tool that
 
 ## What's on the roadmap
 
-- Write-back (apply approved category fixes via the YNAB API)
+- ~~Write-back (apply approved category fixes via the YNAB API)~~ — shipped: `recategorize` (dry-run by default, `--yes` to apply)
 - Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider
 - Rules engine ("payee X is always category Y") the AI can propose additions to
 - Packaging as an installable Claude Code plugin

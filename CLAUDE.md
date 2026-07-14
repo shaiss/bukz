@@ -33,7 +33,7 @@ node fixtures/generate.mjs         # regenerate demo fixtures
 
 There is no build/lint step — plain ESM (`.mjs`), Node ≥ 18, zero runtime dependencies (no `npm install` needed; keep it that way).
 
-Every analysis command accepts `--in FILE` — `--in fixtures/sample.json` is demo mode and works without API keys. `--since YYYY-MM-DD` filters; `--provider ynab|xero` selects the source.
+Every analysis command accepts `--in FILE` — `--in fixtures/sample.json` is demo mode and works without API keys. `--since YYYY-MM-DD` and `--until YYYY-MM-DD` filter (inclusive bounds); `--provider ynab|xero` selects the source.
 
 ## Architecture
 

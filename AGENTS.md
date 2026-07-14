@@ -135,27 +135,20 @@ skill has one.
 
 ## Current state
 
-**Mature, working, but uncommitted (no git history yet — all files untracked).**
+**Mature and working.**
 
-- Both providers (YNAB, Xero) implemented and read-only.
-- All nine CLI commands implemented: `check`, `budgets`, `pull`, `categories`,
-  `spot-check`, `anomalies`, `mismatches`, `uncategorized`, `match`.
+- Both providers (YNAB, Xero) implemented; YNAB is read + write, Xero is read-only.
+- All ten CLI commands implemented: `check`, `budgets`, `pull`, `categories`,
+  `spot-check`, `anomalies`, `mismatches`, `uncategorized`, `match`, `recategorize`.
 - All seven skills written.
-- 12/12 tests pass (`node --test`).
+- 49/49 tests pass (`node --test`).
 - Demo mode (`--in fixtures/sample.json`) works end-to-end with no API keys.
+- Input validation hardened: empty numeric args throw (not silently coerce to 0),
+  and calendar dates are round-trip validated through the `Date` constructor so
+  impossible dates like `2026-02-31` are rejected instead of rolling over.
 
-### Open work (in progress when this file was written)
+### Roadmap
 
-Input-validation hardening. Two concrete bugs are known and reproduced:
-
-1. **Empty numeric args silently coerce to 0.** `num('')` returns `0` because
-   `Number("")` is `0`, not `NaN`. `bukz anomalies --z ''` therefore runs at `z=0` and
-   flags every transaction as an outlier. Same class: `num(' ')`, `num('\t')`.
-2. **Invalid calendar dates silently roll over.** `--since 2026-13-99` and
-   `match --date 2026-02-31` pass the `YYYY-MM-DD` *format* regex but `new Date()`
-   either rolls them forward (`02-31` → `03-03`, matching the wrong transactions) or
-   yields `Invalid Date`. Dates must be validated by round-tripping through the Date
-   constructor and comparing the result back to the input.
-
-The roadmap (see README.md): write-back via YNAB API; Xero invoices/bills; a rules
-engine ("payee X is always category Y"); packaging as an installable plugin.
+- Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider
+- A rules engine ("payee X is always category Y") the AI can propose additions to
+- Packaging as an installable Claude Code plugin

@@ -7,7 +7,7 @@ Works with **YNAB** and **Xero** out of the box. Zero dependencies — if you ha
 ## Quickstart
 
 ```sh
-git clone <this repo> && cd bukz
+git clone https://github.com/shaiss/bukz.git && cd bukz
 cp .env.example .env     # then add your API keys IN YOUR EDITOR — never in a chat
 claude
 ```

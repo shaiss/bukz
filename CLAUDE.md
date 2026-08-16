@@ -24,7 +24,7 @@ node bin/bukz.mjs help            # full CLI reference
 node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental by default)
 node bin/bukz.mjs pull --full     # re-fetch everything (ignore the cache cursor)
-node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, uncategorized, match, categories, budgets)
+node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncategorized, match, categories, budgets)
 
 node --test                        # run all tests
 node --test tests/analysis.test.mjs  # run one test file
@@ -42,10 +42,10 @@ bin/bukz.mjs           dispatcher → src/commands/<name>.mjs (thin wrappers)
 src/providers/         ynab.mjs, xero.mjs — normalize to the shared transaction
                        shape documented in providers/index.mjs
 src/analysis/          pure functions: stats.mjs (median/MAD/robustZ),
-                       anomalies.mjs, mismatches.mjs, sample.mjs
+                       anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs
 src/data.mjs           cache I/O; data/transactions.json is the analysis input
 .claude/skills/        the AI team: bukz-setup, spot-check, anomalies,
-                       mismatches, triage, receipts, close-review
+                       mismatches, rules, triage, receipts, close-review
 fixtures/generate.mjs  writes sample.json with PLANTED issues — each plant has
                        a matching test assertion; keep them in sync
 ```

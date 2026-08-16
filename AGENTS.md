@@ -36,7 +36,7 @@ node bin/bukz.mjs help            # full CLI reference
 node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental)
 node bin/bukz.mjs pull --full     # ignore the cursor, re-fetch everything
-node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, uncategorized, match, categories, budgets)
+node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncategorized, match, categories, budgets)
 node bin/bukz.mjs recategorize    # MUTATING (YNAB): --txn <id> --category "<name>"; dry-run unless --yes
 
 node --test                        # run all tests
@@ -59,12 +59,12 @@ src/data.mjs            cache I/O (atomic writes + incremental merge);
 src/providers/          ynab.mjs, xero.mjs — normalize to the shared transaction
                         shape documented in providers/index.mjs
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
-                        anomalies.mjs, mismatches.mjs, sample.mjs
+                        anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs
 src/commands/           one thin wrapper per CLI command (read + write/mutating)
 fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
                         matching test assertion in tests/analysis.test.mjs
 .claude/skills/         the AI team: bukz-setup, spot-check, anomalies,
-                        mismatches, triage, receipts, close-review
+                        mismatches, rules, triage, receipts, close-review
 .claude/skills/_shared/ shared skill content (see below); not a skill itself
 .claude/settings.json   permission policy (.env is deny-listed)
 ```
@@ -124,7 +124,7 @@ skill has one.
 - **Findings tables always include the `account` field.** A bookkeeper needs to know
   which account/card a flagged transaction is on to locate and fix it; "account" is
   also load-bearing context (a "duplicate" across two accounts usually isn't one).
-  The data always carries it (72/72 fixture rows do); show `—` only when it's null.
+  The data always carries it (83/83 fixture rows do); show `—` only when it's null.
 - Numeric CLI args come through `num()` in `src/cli.mjs`. Empty/whitespace strings
   must be rejected (they coerce to `0` via `Number("")`), and calendar dates must be
   round-trip validated (JS rolls `2026-02-31` → `2026-03-03`).
@@ -138,10 +138,11 @@ skill has one.
 **Mature and working.**
 
 - Both providers (YNAB, Xero) implemented; YNAB is read + write, Xero is read-only.
-- All ten CLI commands implemented: `check`, `budgets`, `pull`, `categories`,
-  `spot-check`, `anomalies`, `mismatches`, `uncategorized`, `match`, `recategorize`.
-- All seven skills written.
-- 49/49 tests pass (`node --test`).
+- All eleven CLI commands implemented: `check`, `budgets`, `pull`, `categories`,
+  `spot-check`, `anomalies`, `mismatches`, `rules`, `uncategorized`, `match`,
+  `recategorize`.
+- All eight skills written.
+- 53/53 tests pass (`node --test`).
 - Demo mode (`--in fixtures/sample.json`) works end-to-end with no API keys.
 - Input validation hardened: empty numeric args throw (not silently coerce to 0),
   and calendar dates are round-trip validated through the `Date` constructor so
@@ -150,5 +151,7 @@ skill has one.
 ### Roadmap
 
 - Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider
-- A rules engine ("payee X is always category Y") the AI can propose additions to
+- Rules engine, next slices: fuzzy payee matching across merchant variants
+  (`SQ *SHOP` vs `SQ *SHOP #123`) and persisting a user-curated rule set — the
+  derive-from-history slice (`rules` command + skill) is shipped
 - Packaging as an installable Claude Code plugin

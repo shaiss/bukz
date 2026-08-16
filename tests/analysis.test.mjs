@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { median, mad, robustZ, daysBetween } from '../src/analysis/stats.mjs';
 import { findAnomalies } from '../src/analysis/anomalies.mjs';
 import { findMismatches } from '../src/analysis/mismatches.mjs';
+import { deriveRules } from '../src/analysis/rules.mjs';
 import { sampleForSpotCheck } from '../src/analysis/sample.mjs';
 
 // The fixture's planted issues (see fixtures/generate.mjs) are the spec here.
@@ -84,7 +85,8 @@ test('anomalies: flags the new large payee', () => {
 });
 
 test('anomalies: counts triage work', () => {
-  assert.equal(anomalies.uncategorizedCount, 2);
+  // 2 from PLANT 7 + 1 uncategorized Staples row from PLANT 8
+  assert.equal(anomalies.uncategorizedCount, 3);
   assert.equal(anomalies.unapprovedCount, 1);
 });
 
@@ -96,6 +98,49 @@ test('mismatches: catches Netflix drifting into Groceries', () => {
   assert.equal(netflix.usualCategory, 'Subscriptions');
   assert.equal(netflix.outliers.length, 1);
   assert.equal(netflix.outliers[0].category, 'Groceries');
+});
+
+test('rules: proposes Staples→Office Supplies with its uncategorized row as work', () => {
+  const { rules } = deriveRules(txns);
+  const staples = rules.find((r) => r.payee === 'Staples');
+  assert.ok(staples, 'Staples rule not found');
+  assert.equal(staples.category, 'Office Supplies');
+  assert.equal(staples.support, 4);
+  assert.equal(staples.confidence, 1);
+  assert.equal(staples.uncategorized.length, 1);
+  assert.equal(staples.uncategorized[0].account, 'Demo Checking');
+});
+
+test('rules: Netflix rule agrees with mismatches on the exception', () => {
+  const { rules } = deriveRules(txns);
+  const netflix = rules.find((r) => r.payee === 'Netflix');
+  assert.ok(netflix, 'Netflix rule not found');
+  assert.equal(netflix.category, 'Subscriptions');
+  assert.equal(netflix.confidence, 0.83);
+  assert.equal(netflix.exceptions.length, 1);
+  assert.equal(netflix.exceptions[0].category, 'Groceries');
+});
+
+test('rules: mixed payees land in ambiguous, not rules', () => {
+  const { rules, ambiguous } = deriveRules(txns);
+  const costco = ambiguous.find((a) => a.payee === 'Costco Wholesale');
+  assert.ok(costco, 'Costco not listed as ambiguous');
+  assert.deepEqual(costco.categories, [
+    { category: 'Dining Out', count: 3 },
+    { category: 'Groceries', count: 3 },
+  ]);
+  assert.ok(!rules.some((r) => r.payee === 'Costco Wholesale'));
+});
+
+test('rules: thin-history payees are skipped and summarized', () => {
+  const { rules, summary } = deriveRules(txns);
+  // Amazon's single uncategorized row is no basis for a rule
+  assert.ok(!rules.some((r) => r.payee === 'Amazon'));
+  assert.equal(summary.rules, rules.length);
+  assert.equal(summary.ambiguous, 1);
+  assert.equal(summary.payeesConsidered, 15);
+  assert.equal(summary.belowMinSupport, 3);
+  assert.equal(summary.uncategorizedRowsInRules, 1);
 });
 
 test('spot-check: deterministic, bounded, always includes largest txn', () => {

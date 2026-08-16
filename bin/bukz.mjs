@@ -9,6 +9,7 @@ const COMMANDS = {
   'spot-check': () => import('../src/commands/spot-check.mjs'),
   anomalies: () => import('../src/commands/anomalies.mjs'),
   mismatches: () => import('../src/commands/mismatches.mjs'),
+  rules: () => import('../src/commands/rules.mjs'),
   uncategorized: () => import('../src/commands/uncategorized.mjs'),
   match: () => import('../src/commands/match.mjs'),
   recategorize: () => import('../src/commands/recategorize.mjs'),
@@ -33,6 +34,9 @@ Analysis (read from the cache; all output is JSON)
                     --z N (default 3.5)  --window DAYS (default 3)  --top N
   mismatches      Payees whose category usage diverges from their usual one
                     --min-history N (default 3)  --dominance 0..1 (default 0.8)
+  rules           Payee→category rule candidates from history, plus the
+                  uncategorized rows each rule would fix
+                    --min-support N (default 3)  --min-confidence 0..1 (default 0.8)
   uncategorized   Transactions with no category, and unapproved ones
   match           Find transactions matching a receipt
                     --amount 42.50 --date YYYY-MM-DD [--window DAYS] [--payee TEXT]

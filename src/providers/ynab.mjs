@@ -93,6 +93,49 @@ export async function fetchCategories() {
   return categories;
 }
 
+// Optional provider capability (Xero does not implement these yet): account
+// balances for the balance sheet / cash look-ahead. Closed accounts are kept
+// and flagged — they carry history; commands decide whether to use them.
+export async function fetchAccounts() {
+  const data = await get(`/plans/${planId()}/accounts`);
+  return data.accounts
+    .filter((a) => !a.deleted)
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      onBudget: Boolean(a.on_budget),
+      closed: Boolean(a.closed),
+      balance: a.balance / 1000,
+      clearedBalance: a.cleared_balance / 1000,
+      unclearedBalance: a.uncleared_balance / 1000,
+    }));
+}
+
+// Optional provider capability: per-month budget snapshots (budgeted amounts
+// per category) for budget-vs-actual. Month labels normalize to YYYY-MM.
+export async function fetchBudgetMonths() {
+  const data = await get(`/plans/${planId()}/months`);
+  return data.months
+    .filter((m) => !m.deleted)
+    .map((m) => ({
+      month: m.month.slice(0, 7),
+      budgeted: m.budgeted / 1000,
+      activity: m.activity / 1000,
+      toBeBudgeted: m.to_be_budgeted / 1000,
+      categories: (m.categories ?? [])
+        .filter((c) => !c.deleted && !c.hidden)
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          budgeted: c.budgeted / 1000,
+          activity: c.activity / 1000,
+          balance: c.balance / 1000,
+        })),
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+}
+
 export async function fetchTransactions({ since, knowledge } = {}) {
   // Delta sync: pass the last server_knowledge to receive only changed
   // transactions since then (plus a new knowledge value to persist). Without a

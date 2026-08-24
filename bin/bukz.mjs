@@ -13,6 +13,12 @@ const COMMANDS = {
   uncategorized: () => import('../src/commands/uncategorized.mjs'),
   match: () => import('../src/commands/match.mjs'),
   recategorize: () => import('../src/commands/recategorize.mjs'),
+  pl: () => import('../src/commands/pl.mjs'),
+  cashflow: () => import('../src/commands/cashflow.mjs'),
+  balances: () => import('../src/commands/balances.mjs'),
+  variance: () => import('../src/commands/variance.mjs'),
+  outlook: () => import('../src/commands/outlook.mjs'),
+  serve: () => import('../src/commands/serve.mjs'),
 };
 
 const USAGE = `bukz — the AI bookkeeper's toolbelt
@@ -40,6 +46,28 @@ Analysis (read from the cache; all output is JSON)
   uncategorized   Transactions with no category, and unapproved ones
   match           Find transactions matching a receipt
                     --amount 42.50 --date YYYY-MM-DD [--window DAYS] [--payee TEXT]
+
+Reporting (read from the cache; all output is JSON)
+  pl              Profit & loss by category for a period (sign-based:
+                  positive = income); excludes transfers
+                    default period: month of the newest transaction
+  cashflow        Cash in/out/net by month and account — includes transfers
+                  (cash movement), the one deliberate exception
+  balances        Account balances as of the last pull (YNAB)
+  variance        Budget vs actual by category for one month
+                    --month YYYY-MM (default: newest transaction's month,
+                    else the newest budgeted month)
+  outlook         N-day cash look-ahead per account: balance minus bills due,
+                  red/yellow/green coverage + worst-of rollup
+                    --days N (default 14)  --bills FILE (default config/bills.json;
+                    demo: --bills fixtures/bills.json)
+
+Visualization (read-only, localhost only)
+  serve           Dashboard SPA over the cache: checkpoint traffic lights,
+                  P&L, cashflow, budget variance — same analysis code, drawn
+                    --port N (default 7800)  --in FILE  --bills FILE
+                    demo: node bin/bukz.mjs serve --in fixtures/sample.json
+                            --bills fixtures/bills.json
 
 Write (mutating — YNAB only; DRY-RUN by default, --yes to apply)
   recategorize    Change one transaction's category

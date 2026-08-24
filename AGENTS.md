@@ -37,6 +37,8 @@ node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental)
 node bin/bukz.mjs pull --full     # ignore the cursor, re-fetch everything
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncategorized, match, categories, budgets)
+node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
+node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
 node bin/bukz.mjs recategorize    # MUTATING (YNAB): --txn <id> --category "<name>"; dry-run unless --yes
 
 node --test                        # run all tests
@@ -56,18 +58,50 @@ src/cli.mjs             arg parsing + shared output helpers (parse, num, out)
 src/env.mjs             tiny .env loader (zero deps)
 src/data.mjs            cache I/O (atomic writes + incremental merge);
                         data/transactions.json is the analysis input
+src/config.mjs          loader for config/ — the gitignored, curated registries
+                        (bills.json, entities.json); *.example.json are committed
+src/server.mjs          the read-only localhost server behind `serve`: static
+                        SPA from web/, the analysis modules for browser import,
+                        and /api/data + /api/bills (re-read per request)
 src/providers/          ynab.mjs, xero.mjs — normalize to the shared transaction
                         shape documented in providers/index.mjs
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
-                        anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs
+                        anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs;
+                        reporting: money.mjs (cent math), period.mjs (date
+                        helpers), pl.mjs, cashflow.mjs, variance.mjs, outlook.mjs
 src/commands/           one thin wrapper per CLI command (read + write/mutating)
 fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
-                        matching test assertion in tests/analysis.test.mjs
+                        matching test assertion in tests/. fixtures/bills.json
+                        is the demo bills registry (static, not generated)
 .claude/skills/         the AI team: bukz-setup, spot-check, anomalies,
-                        mismatches, rules, triage, receipts, close-review
+                        mismatches, rules, triage, receipts, close-review,
+                        weekly-checkpoint
 .claude/skills/_shared/ shared skill content (see below); not a skill itself
 .claude/settings.json   permission policy (.env is deny-listed)
+config/                 machine-local curated data (gitignored except templates):
+                        bills.json powers `outlook`, entities.json maps account→
+                        entity for future entity-sliced reports
+web/                    the dashboard SPA (index.html, app.js, views.mjs,
+                        util.mjs, style.css) — zero dependencies, no build step;
+                        it imports the SAME pure analysis modules the CLI runs,
+                        so screen numbers and JSON numbers come from one codebase
 ```
+
+### The dashboard (`serve`)
+
+`node bin/bukz.mjs serve` starts a read-only SPA at `http://127.0.0.1:7800`
+(`--port`, `--in FILE`, `--bills FILE`; demo: `serve --in fixtures/sample.json
+--bills fixtures/bills.json`). Ground rules:
+
+- **Read-only, localhost-only.** The server binds 127.0.0.1, serves GET only,
+  and nothing outside `web/` + `src/analysis/` + the two data files. No write
+  actions exist in the SPA — fixes happen through the confirmed CLI flows.
+- **Numbers come from the shared analysis modules.** The browser imports
+  `src/analysis/*.mjs` directly; the SPA never re-implements a computation.
+  Keep those modules free of `node:*` imports — that's what makes them
+  browser-loadable.
+- `/api/data` and `/api/bills` re-read their files per request, so a fresh
+  `pull` shows up on browser refresh — no server restart.
 
 ### Cross-file contracts to respect
 
@@ -89,13 +123,28 @@ fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
   bypasses the cursor and re-fetches everything; switching providers forces a full
   fetch so two sources are never blended into one cache. Writes are atomic
   (temp-file + rename), so an interrupted pull leaves the prior cache intact.
+  `pull` also snapshots `accounts` (balances) and `budgetMonths` on every pull
+  when the provider exposes them (YNAB does, Xero does not yet) — cheap, whole-
+  refresh data that isn't mergeable history.
+- **Reporting conventions.** All money aggregation happens in integer cents
+  (`src/analysis/money.mjs`) and rounds to 2dp only at the output edge. `cashflow`
+  is the **one deliberate exception** to the transfer-exclusion rule — moving
+  money between accounts is cash movement, which is exactly what cashflow and the
+  14-day outlook measure; `pl` and `variance` exclude transfers like everything
+  else. Period defaults derive from the data, never the wall clock: `pl` defaults
+  to the month of the newest transaction, `variance` to that month (falling back
+  to the newest cached budget month), `outlook`'s reference date is the newest
+  transaction date.
 
 ## Adding things
 
 - **A provider**: implement `listSources`, `checkAuth`, `fetchCategories`,
   `fetchTransactions({ since })` in `src/providers/<name>.mjs`, normalize to the shared
   shape (mind the sign convention), register it in `src/providers/index.mjs`. Error
-  messages name the missing env var and where to get the credential.
+  messages name the missing env var and where to get the credential. Optional
+  capabilities (`fetchAccounts`, `fetchBudgetMonths`) are detected by `pull`;
+  omit them and the cache simply lacks those fields, with the reporting commands
+  giving a pull-from-YNAB error.
 - **An analysis**: add a pure function in `src/analysis/`, a thin command wrapper in
   `src/commands/`, register it in `bin/bukz.mjs`, and add a planted fixture + test.
 - **A skill**: `.claude/skills/<name>/SKILL.md` with `name` and `description` YAML
@@ -124,7 +173,7 @@ skill has one.
 - **Findings tables always include the `account` field.** A bookkeeper needs to know
   which account/card a flagged transaction is on to locate and fix it; "account" is
   also load-bearing context (a "duplicate" across two accounts usually isn't one).
-  The data always carries it (83/83 fixture rows do); show `—` only when it's null.
+  The data always carries it (85/85 fixture rows do); show `—` only when it's null.
 - Numeric CLI args come through `num()` in `src/cli.mjs`. Empty/whitespace strings
   must be rejected (they coerce to `0` via `Number("")`), and calendar dates must be
   round-trip validated (JS rolls `2026-02-31` → `2026-03-03`).
@@ -137,20 +186,28 @@ skill has one.
 
 **Mature and working.**
 
-- Both providers (YNAB, Xero) implemented; YNAB is read + write, Xero is read-only.
-- All eleven CLI commands implemented: `check`, `budgets`, `pull`, `categories`,
-  `spot-check`, `anomalies`, `mismatches`, `rules`, `uncategorized`, `match`,
-  `recategorize`.
-- All eight skills written.
-- 53/53 tests pass (`node --test`).
-- Demo mode (`--in fixtures/sample.json`) works end-to-end with no API keys.
+- Both providers (YNAB, Xero) implemented; YNAB is read + write (transactions,
+  balances, budget months), Xero is read-only (transactions).
+- All seventeen CLI commands implemented: `check`, `budgets`, `pull`,
+  `categories`, `spot-check`, `anomalies`, `mismatches`, `rules`,
+  `uncategorized`, `match`, `recategorize`, the reporting set `pl`, `cashflow`,
+  `balances`, `variance`, `outlook`, and the `serve` dashboard.
+- All nine skills written, including `weekly-checkpoint`.
+- 74/74 tests pass (`node --test`).
+- Demo mode (`--in fixtures/sample.json`) works end-to-end with no API keys
+  (`outlook` also takes `--bills fixtures/bills.json`).
 - Input validation hardened: empty numeric args throw (not silently coerce to 0),
   and calendar dates are round-trip validated through the `Date` constructor so
   impossible dates like `2026-02-31` are rejected instead of rolling over.
 
 ### Roadmap
 
-- Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider
+- Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider, Xero balances
+- Reporting, next slices: entity-sliced P&L (`pl --entity` via
+  `config/entities.json`), curated Category-Map rules checking, Google Sheets
+  sync for `config/` (one JSON file per hub sheet), autopay "did it actually
+  post" verification against history — the aggregation core, balances,
+  budget-vs-actual, and the 14-day outlook are shipped
 - Rules engine, next slices: fuzzy payee matching across merchant variants
   (`SQ *SHOP` vs `SQ *SHOP #123`) and persisting a user-curated rule set — the
   derive-from-history slice (`rules` command + skill) is shipped

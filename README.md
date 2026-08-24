@@ -26,11 +26,24 @@ Then just talk to it:
 | `spot-check` | Samples transactions per category, reviews payee/category fit |
 | `anomalies` | Duplicate charges, amount outliers, refund/sign flips, recurring payments that stopped, suspicious new payees |
 | `mismatches` | Payees drifting out of their usual category |
+| `rules` | Derives payee→category rules from history, lists the uncategorized rows each would fix |
 | `triage` | Proposes categories for the uncategorized, reviews the unapproved |
 | `receipts` | Extracts receipt images/PDFs → ledger CSV, matches them to transactions, flags receipts missing from the books |
-| `close-review` | Runs everything, synthesizes one month-end report with an action checklist |
+| `weekly-checkpoint` | The weekly status row: balances, autopay check, 14-day cash coverage with 🔴/🟡/🟢 per account, flags, next actions |
+| `close-review` | Runs everything, delivers the month's P&L / budget-vs-actual / cashflow, synthesizes one month-end report with an action checklist |
 
 Under the hood each skill drives a deterministic CLI (`node bin/bukz.mjs help`) and applies bookkeeper judgment to its JSON output. Numbers come from code; opinions come from the model; fixes come from **you** — bukz is strictly read-only against your books.
+
+The reporting commands (`pl`, `cashflow`, `balances`, `variance`, `outlook`) turn the cached books into the month's statements and a 14-day cash look-ahead. `outlook` reads a local bills registry — copy `config/bills.example.json` to `config/bills.json` and list your recurring bills (gitignored, like all your data); it then projects each account's balance against the bills due and rates coverage 🔴/🟡/🟢.
+
+## A dashboard, if you want one
+
+```sh
+node bin/bukz.mjs serve                                   # your books, at http://127.0.0.1:7800
+node bin/bukz.mjs serve --in fixtures/sample.json --bills fixtures/bills.json   # demo
+```
+
+A read-only visualization layer over the same cache: the weekly checkpoint with per-account traffic lights, P&L, cashflow, and budget variance — every table drills down to the transactions behind it. Zero dependencies and no build step; the browser imports the exact analysis modules the CLI runs, so a number on screen and the same number in a report always agree. The server binds 127.0.0.1 only.
 
 ## Your keys never meet the model
 
@@ -44,6 +57,9 @@ Honest caveat: no local setup can make secrets provably invisible to a tool that
 ## What's on the roadmap
 
 - ~~Write-back (apply approved category fixes via the YNAB API)~~ — shipped: `recategorize` (dry-run by default, `--yes` to apply)
+- ~~Reporting (P&L, cashflow, budget-vs-actual, 14-day cash outlook)~~ — shipped: `pl`, `cashflow`, `balances`, `variance`, `outlook` + the `weekly-checkpoint` and `close-review` skills
+- ~~Visualization layer~~ — shipped: `serve` — a read-only localhost dashboard SPA over the cache
+- Entity-sliced P&L, curated category rules, Google Sheets sync for the bills registry
 - Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider
 - Rules engine ("payee X is always category Y") the AI can propose additions to
 - Packaging as an installable Claude Code plugin

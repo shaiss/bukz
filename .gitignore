@@ -12,6 +12,12 @@ receipts/processed/*
 receipts/ledger.csv
 reports/
 
+# Curated bookkeeping context (bills registry, account→entity map) is private;
+# only the committed *.example.json templates and .gitkeep are shared
+config/*
+!config/.gitkeep
+!config/*.example.json
+
 node_modules/
 *.log
 
@@ -20,3 +26,4 @@ node_modules/
 
 # Local agent session/plan artifacts
 .zcode/
+.playwright-mcp/

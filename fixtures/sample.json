@@ -59,6 +59,111 @@
       "group": "Income"
     }
   ],
+  "accounts": [
+    {
+      "id": "acc-1",
+      "name": "Demo Checking",
+      "type": "checking",
+      "onBudget": true,
+      "closed": false,
+      "balance": 4250,
+      "clearedBalance": 4250,
+      "unclearedBalance": 0
+    },
+    {
+      "id": "acc-2",
+      "name": "Demo Savings",
+      "type": "savings",
+      "onBudget": true,
+      "closed": false,
+      "balance": 2500,
+      "clearedBalance": 2500,
+      "unclearedBalance": 0
+    },
+    {
+      "id": "acc-3",
+      "name": "Demo Credit Card",
+      "type": "credit_card",
+      "onBudget": true,
+      "closed": false,
+      "balance": 80,
+      "clearedBalance": 80,
+      "unclearedBalance": 0
+    }
+  ],
+  "budgetMonths": [
+    {
+      "month": "2026-06",
+      "budgeted": 5126,
+      "activity": -4962.44,
+      "toBeBudgeted": 0,
+      "categories": [
+        {
+          "id": "Rent",
+          "name": "Rent",
+          "budgeted": 1800,
+          "activity": -1800,
+          "balance": 0
+        },
+        {
+          "id": "Utilities",
+          "name": "Utilities",
+          "budgeted": 120,
+          "activity": -19.6,
+          "balance": 100.4
+        },
+        {
+          "id": "Groceries",
+          "name": "Groceries",
+          "budgeted": 300,
+          "activity": -121.19,
+          "balance": 178.81
+        },
+        {
+          "id": "Dining Out",
+          "name": "Dining Out",
+          "budgeted": 100,
+          "activity": -357.55,
+          "balance": -257.55
+        },
+        {
+          "id": "Subscriptions",
+          "name": "Subscriptions",
+          "budgeted": 16,
+          "activity": 0,
+          "balance": 16
+        },
+        {
+          "id": "Health & Fitness",
+          "name": "Health & Fitness",
+          "budgeted": 50,
+          "activity": -45,
+          "balance": 5
+        },
+        {
+          "id": "Software",
+          "name": "Software",
+          "budgeted": 100,
+          "activity": -87.5,
+          "balance": 12.5
+        },
+        {
+          "id": "Professional Services",
+          "name": "Professional Services",
+          "budgeted": 2600,
+          "activity": -2500,
+          "balance": 100
+        },
+        {
+          "id": "Transport",
+          "name": "Transport",
+          "budgeted": 40,
+          "activity": -31.6,
+          "balance": 8.4
+        }
+      ]
+    }
+  ],
   "transactions": [
     {
       "id": "fx-001",
@@ -1178,6 +1283,34 @@
       "status": "cleared",
       "approved": true,
       "transfer": false,
+      "provider": "fixture"
+    },
+    {
+      "id": "fx-084",
+      "date": "2026-07-03",
+      "amount": -1000,
+      "payee": "Transfer to Savings",
+      "category": null,
+      "categoryId": null,
+      "account": "Demo Checking",
+      "memo": "",
+      "status": "cleared",
+      "approved": true,
+      "transfer": true,
+      "provider": "fixture"
+    },
+    {
+      "id": "fx-085",
+      "date": "2026-07-03",
+      "amount": 1000,
+      "payee": "Transfer from Checking",
+      "category": null,
+      "categoryId": null,
+      "account": "Demo Savings",
+      "memo": "",
+      "status": "cleared",
+      "approved": true,
+      "transfer": true,
       "provider": "fixture"
     },
     {

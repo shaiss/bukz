@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bukz — books dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23345'/%3E%3Ctext x='8' y='12' font-size='10' text-anchor='middle' fill='%23fff' font-family='serif'%3Eb%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header id="topbar">
+    <span class="brand">bukz</span>
+    <nav id="tabs"></nav>
+    <div id="meta"></div>
+    <button id="refresh" title="Re-fetch data and re-render">⟳ refresh</button>
+  </header>
+  <main id="app"></main>
+  <div id="modal-root" hidden></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

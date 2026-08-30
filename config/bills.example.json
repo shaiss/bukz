@@ -1,0 +1,73 @@
+[
+  {
+    "name": "Maple Property Management",
+    "amount": 1800,
+    "cadence": "monthly",
+    "dayOfMonth": 1,
+    "paidFrom": "Demo Checking",
+    "autopay": "yes",
+    "active": true,
+    "notes": "Rent"
+  },
+  {
+    "name": "Cedar Utilities",
+    "amount": 115,
+    "cadence": "monthly",
+    "dayOfMonth": 18,
+    "paidFrom": "Demo Checking",
+    "autopay": "yes",
+    "active": true
+  },
+  {
+    "name": "Riverside Water & Sewer",
+    "amount": 90,
+    "cadence": "quarterly",
+    "month": 2,
+    "dayOfMonth": 10,
+    "paidFrom": "Demo Checking",
+    "autopay": "yes",
+    "active": true,
+    "notes": "Feb/May/Aug/Nov — quarterly/annual bills need `month` as the anchor month"
+  },
+  {
+    "name": "Lakeside Cleaner",
+    "amount": 60,
+    "cadence": "biweekly",
+    "anchor": "2026-01-05",
+    "paidFrom": "Demo Checking",
+    "autopay": "no",
+    "active": true,
+    "notes": "Every other Monday — weekly/biweekly bills need `anchor` (any known past occurrence) instead of dayOfMonth"
+  },
+  {
+    "name": "Hometown Insurance",
+    "amount": null,
+    "cadence": "annual",
+    "month": 3,
+    "dayOfMonth": 5,
+    "paidFrom": "Demo Savings",
+    "autopay": "no",
+    "active": true,
+    "notes": "Amount varies — confirm at renewal"
+  },
+  {
+    "name": "Elm Landscaping",
+    "amount": null,
+    "cadence": "manual",
+    "dayOfMonth": null,
+    "paidFrom": "Demo Checking",
+    "autopay": "no",
+    "active": true,
+    "notes": "Seasonal, on demand — not projectable"
+  },
+  {
+    "name": "Retired Gym",
+    "amount": 25,
+    "cadence": "monthly",
+    "dayOfMonth": 2,
+    "paidFrom": "Demo Checking",
+    "autopay": "yes",
+    "active": false,
+    "notes": "Cancelled — kept as an example of inactive"
+  }
+]

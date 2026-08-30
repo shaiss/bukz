@@ -1,0 +1,60 @@
+[
+  {
+    "name": "Gym Membership",
+    "amount": 45,
+    "cadence": "monthly",
+    "dayOfMonth": 10,
+    "paidFrom": "Demo Checking",
+    "autopay": "yes",
+    "active": true
+  },
+  {
+    "name": "Streaming Service",
+    "amount": 10,
+    "cadence": "monthly",
+    "dayOfMonth": 15,
+    "paidFrom": "Demo Checking",
+    "autopay": "yes",
+    "active": true
+  },
+  {
+    "name": "City Water",
+    "amount": 60,
+    "cadence": "monthly",
+    "dayOfMonth": 12,
+    "paidFrom": "Demo Credit Card",
+    "autopay": "yes",
+    "active": true
+  },
+  {
+    "name": "Property Tax",
+    "amount": 3000,
+    "cadence": "quarterly",
+    "month": 7,
+    "dayOfMonth": 15,
+    "paidFrom": "Demo Savings",
+    "autopay": "no",
+    "active": true
+  },
+  {
+    "name": "RV Insurance",
+    "amount": null,
+    "cadence": "annual",
+    "month": 8,
+    "dayOfMonth": 20,
+    "paidFrom": "Demo Checking",
+    "autopay": "no",
+    "active": true,
+    "notes": "Amount varies — confirm at renewal (due outside both windows)"
+  },
+  {
+    "name": "Legacy Hosting",
+    "amount": 20,
+    "cadence": "monthly",
+    "dayOfMonth": 5,
+    "paidFrom": "First National (closed)",
+    "autopay": "yes",
+    "active": true,
+    "notes": "Deliberately unmatched account — glossary drift example"
+  }
+]

@@ -25,6 +25,9 @@ node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental by default)
 node bin/bukz.mjs pull --full     # re-fetch everything (ignore the cache cursor)
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncategorized, match, categories, budgets)
+node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
+node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
+node bin/bukz.mjs assign          # MUTATING (YNAB budget): assign dollars; dry-run unless --yes
 
 node --test                        # run all tests
 node --test tests/analysis.test.mjs  # run one test file
@@ -42,19 +45,30 @@ bin/bukz.mjs           dispatcher → src/commands/<name>.mjs (thin wrappers)
 src/providers/         ynab.mjs, xero.mjs — normalize to the shared transaction
                        shape documented in providers/index.mjs
 src/analysis/          pure functions: stats.mjs (median/MAD/robustZ),
-                       anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs
+                       anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs;
+                       reporting: money.mjs, period.mjs, pl.mjs, cashflow.mjs,
+                       variance.mjs, outlook.mjs
 src/data.mjs           cache I/O; data/transactions.json is the analysis input
+src/config.mjs         loader for config/ — gitignored curated registries
+                       (bills.json powers outlook; entities.json is the
+                       account→entity map for future entity-sliced reports)
+src/server.mjs         read-only localhost server behind `serve` (static SPA
+                       from web/ + /api/data + /api/bills); web/ holds the
+                       zero-dependency SPA, which imports the same analysis
+                       modules the CLI runs — one source of truth for numbers
 .claude/skills/        the AI team: bukz-setup, spot-check, anomalies,
-                       mismatches, rules, triage, receipts, close-review
+                       mismatches, rules, triage, receipts, close-review,
+                       weekly-checkpoint, budget
 fixtures/generate.mjs  writes sample.json with PLANTED issues — each plant has
                        a matching test assertion; keep them in sync
 ```
 
 Key conventions that span files:
 
-- **Normalized transaction shape** (contract between providers, analysis, and skills) is documented in `src/providers/index.mjs`. Amounts are currency units, **negative = outflow**. Splits become one row per line. `transfer: true` rows are excluded from all analysis.
-- **Determinism everywhere**: anomaly "now" is the newest transaction date (not wall clock), spot-check sampling is seeded (mulberry32). Same data + same flags = same output, so fixtures never go stale and reviews are reproducible.
+- **Normalized transaction shape** (contract between providers, analysis, and skills) is documented in `src/providers/index.mjs`. Amounts are currency units, **negative = outflow**. Splits become one row per line. `transfer: true` rows are excluded from all analysis — except `cashflow`, deliberately: transfers ARE cash movement.
+- **Determinism everywhere**: anomaly "now" is the newest transaction date (not wall clock), spot-check sampling is seeded (mulberry32). Same data + same flags = same output, so fixtures never go stale and reviews are reproducible. Reporting periods follow the same rule: `pl` defaults to the newest transaction's month, `outlook`'s reference date is the newest transaction date.
 - **Robust statistics**: outlier detection uses median/MAD (`robustZ`), never mean/stdev — amounts are heavy-tailed. `robustZ` has a documented fallback for zero-spread (flat subscription) histories.
+- **Money math is integer cents** (`src/analysis/money.mjs`), rounded to 2dp only at the output edge — reporting sums never drift.
 - **All CLI output is JSON on stdout**, led by a `meta` block (`provider`, `pulledAt`, …) so skills can judge staleness.
 
 ## Adding a provider

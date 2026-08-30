@@ -5,8 +5,12 @@ import { ROOT } from './env.mjs';
 export const CACHE_PATH = resolve(ROOT, 'data', 'transactions.json');
 
 // Cache shape: { pulledAt, provider, since, categories: [...], transactions: [...],
+//                accounts?: [...], budgetMonths?: [...],   // optional provider capabilities
 //                cursor?: any }   // provider-specific delta cursor (e.g. YNAB server_knowledge)
 // Transactions are the normalized cross-provider shape (see providers/index.mjs).
+// `accounts` (balances) and `budgetMonths` (per-month budget snapshots) are
+// refreshed whole on every pull by providers that expose them (YNAB); providers
+// without the capability omit the keys.
 
 // Atomic write: stage to a temp file, then rename over the target. A plain
 // writeFileSync truncates the target *before* writing, so an interrupted pull

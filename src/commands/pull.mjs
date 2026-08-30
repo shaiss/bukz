@@ -21,22 +21,32 @@ export async function run(argv) {
   let transactions;
   let cursor;
   let fetched;
+  let accounts;
+  let budgetMonths;
   if (incremental) {
-    // Deltas since the last cursor. Categories are cheap and can change, so
-    // refresh them on every pull; transactions are the expensive, mergeable part.
-    categories = await provider.fetchCategories();
-    const delta = await provider.fetchTransactions({ knowledge: cache.cursor });
+    // Deltas since the last cursor. Categories, balances, and budget months
+    // are cheap snapshots that can change, so refresh them on every pull;
+    // transactions are the expensive, mergeable part.
+    const [cats, extras, delta] = await Promise.all([
+      provider.fetchCategories(),
+      fetchExtras(provider),
+      provider.fetchTransactions({ knowledge: cache.cursor }),
+    ]);
+    categories = cats;
+    ({ accounts, budgetMonths } = extras);
     fetched = delta.transactions.length;
     transactions = mergeTransactions(cache.transactions, delta.transactions, delta.deleted);
     cursor = delta.knowledge ?? cache.cursor;
   } else {
     // Full fetch: a fresh cache. `--since` bounds the initial window only here.
     const since = opts.since ?? defaultSince();
-    const [cats, full] = await Promise.all([
+    const [cats, full, extras] = await Promise.all([
       provider.fetchCategories(),
       provider.fetchTransactions({ since }),
+      fetchExtras(provider),
     ]);
     categories = cats;
+    ({ accounts, budgetMonths } = extras);
     transactions = [...full.transactions].sort((a, b) => a.date.localeCompare(b.date));
     fetched = transactions.length;
     cursor = full.knowledge ?? null;
@@ -48,12 +58,17 @@ export async function run(argv) {
     }
   }
 
+  // `accounts`/`budgetMonths` are undefined for providers without them, and
+  // JSON.stringify drops undefined keys — so the cache shape matches the
+  // provider's capabilities.
   saveCache({
     pulledAt: new Date().toISOString(),
     provider: provider.name,
     since: cache?.since ?? opts.since ?? defaultSince(),
     cursor,
     categories,
+    accounts,
+    budgetMonths,
     transactions,
   });
 
@@ -63,11 +78,25 @@ export async function run(argv) {
     fetched,
     total: transactions.length,
     categories: categories.length,
+    accounts: accounts?.length ?? 0,
+    budgetMonths: budgetMonths?.length ?? 0,
     dateRange: transactions.length
       ? { from: transactions[0].date, to: transactions.at(-1).date }
       : null,
     cache: CACHE_PATH,
   });
+}
+
+// Balances and budget months are optional provider capabilities (YNAB has
+// them; Xero does not yet). Refreshed whole on every pull — cheap snapshots,
+// not mergeable history. Missing capabilities yield undefined so the cache
+// keys are dropped entirely (see saveCache below).
+async function fetchExtras(provider) {
+  const [accounts, budgetMonths] = await Promise.all([
+    provider.fetchAccounts ? provider.fetchAccounts() : undefined,
+    provider.fetchBudgetMonths ? provider.fetchBudgetMonths() : undefined,
+  ]);
+  return { accounts, budgetMonths };
 }
 
 function defaultSince() {

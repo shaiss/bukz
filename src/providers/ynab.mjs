@@ -113,16 +113,30 @@ export async function fetchAccounts() {
 }
 
 // Optional provider capability: per-month budget snapshots (budgeted amounts
-// per category) for budget-vs-actual. Month labels normalize to YYYY-MM.
+// per category) for budget-vs-actual, plus the month-ahead signals — Age of
+// Money and each category's goal target. Month labels normalize to YYYY-MM.
+// Goal fields are captured defensively (?? null): they appear when the budget
+// uses YNAB targets, and are simply absent otherwise.
+//
+// The /months list returns summaries WITHOUT category detail (categories were
+// silently absent, which read downstream as "nothing budgeted"), so each
+// month's detail endpoint is fetched too — one extra request per cached month
+// against the 200/hour rate limit, well within a pull's budget.
 export async function fetchBudgetMonths() {
-  const data = await get(`/plans/${planId()}/months`);
-  return data.months
+  const list = await get(`/plans/${planId()}/months`);
+  const summaries = list.months.filter((m) => !m.deleted);
+  const details = await Promise.all(
+    summaries.map((m) => get(`/plans/${planId()}/months/${m.month}`))
+  );
+  return details
+    .map((d) => d.month)
     .filter((m) => !m.deleted)
     .map((m) => ({
       month: m.month.slice(0, 7),
       budgeted: m.budgeted / 1000,
       activity: m.activity / 1000,
       toBeBudgeted: m.to_be_budgeted / 1000,
+      ageOfMoney: m.age_of_money ?? null,
       categories: (m.categories ?? [])
         .filter((c) => !c.deleted && !c.hidden)
         .map((c) => ({
@@ -131,9 +145,35 @@ export async function fetchBudgetMonths() {
           budgeted: c.budgeted / 1000,
           activity: c.activity / 1000,
           balance: c.balance / 1000,
+          goalType: c.goal_type ?? null,
+          goalTarget: c.goal_target != null ? c.goal_target / 1000 : null,
         })),
     }))
     .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+// Optional provider capability (the budget write): assign dollars to one
+// category in one month. `month` is YYYY-MM (normalized to the YYYY-MM-01 the
+// API wants); `amount` is the new budgeted total for that category, in
+// currency units. Returns the updated month-category snapshot. The command
+// layer owns the dry-run → confirm → --yes flow, same as recategorize.
+export async function assignBudget({ month, categoryId, amount }) {
+  const data = await request(
+    'PATCH',
+    `/plans/${planId()}/months/${month}-01/categories/${categoryId}`,
+    { category: { budgeted: Math.round(amount * 1000) } }
+  );
+  const c = data.category;
+  return {
+    category: {
+      id: c.id,
+      name: c.name,
+      budgeted: c.budgeted / 1000,
+      activity: c.activity / 1000,
+      balance: c.balance / 1000,
+    },
+    serverKnowledge: data.server_knowledge ?? null,
+  };
 }
 
 export async function fetchTransactions({ since, knowledge } = {}) {

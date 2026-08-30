@@ -40,6 +40,7 @@ node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncate
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
 node bin/bukz.mjs recategorize    # MUTATING (YNAB): --txn <id> --category "<name>"; dry-run unless --yes
+node bin/bukz.mjs assign          # MUTATING (YNAB budget): --month --category --amount | --copy-from; dry-run unless --yes
 
 node --test                        # run all tests
 node --test tests/analysis.test.mjs # run one test file
@@ -68,14 +69,16 @@ src/providers/          ynab.mjs, xero.mjs — normalize to the shared transacti
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
                         anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs;
                         reporting: money.mjs (cent math), period.mjs (date
-                        helpers), pl.mjs, cashflow.mjs, variance.mjs, outlook.mjs
+                        helpers), pl.mjs, cashflow.mjs, variance.mjs, outlook.mjs;
+                        budget work: budget.mjs (monthAhead, planAssign,
+                        planMonthFunding)
 src/commands/           one thin wrapper per CLI command (read + write/mutating)
 fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
                         matching test assertion in tests/. fixtures/bills.json
                         is the demo bills registry (static, not generated)
 .claude/skills/         the AI team: bukz-setup, spot-check, anomalies,
                         mismatches, rules, triage, receipts, close-review,
-                        weekly-checkpoint
+                        weekly-checkpoint, budget
 .claude/skills/_shared/ shared skill content (see below); not a skill itself
 .claude/settings.json   permission policy (.env is deny-listed)
 config/                 machine-local curated data (gitignored except templates):
@@ -84,7 +87,11 @@ config/                 machine-local curated data (gitignored except templates)
 web/                    the dashboard SPA (index.html, app.js, views.mjs,
                         util.mjs, style.css) — zero dependencies, no build step;
                         it imports the SAME pure analysis modules the CLI runs,
-                        so screen numbers and JSON numbers come from one codebase
+                        so screen numbers and JSON numbers come from one codebase.
+                        Visual language: the Modernist system (borrowed from
+                        shaiss/print-bench) — Archivo (vendored in web/fonts/,
+                        OFL 1.1), ink on paper, one red accent, zero radius,
+                        mono numerals; semantic green/amber/red for money status
 ```
 
 ### The dashboard (`serve`)
@@ -187,13 +194,14 @@ skill has one.
 **Mature and working.**
 
 - Both providers (YNAB, Xero) implemented; YNAB is read + write (transactions,
-  balances, budget months), Xero is read-only (transactions).
-- All seventeen CLI commands implemented: `check`, `budgets`, `pull`,
+  category fixes, budget assignments; balances + budget months incl. Age of
+  Money and goal targets), Xero is read-only (transactions).
+- All eighteen CLI commands implemented: `check`, `budgets`, `pull`,
   `categories`, `spot-check`, `anomalies`, `mismatches`, `rules`,
-  `uncategorized`, `match`, `recategorize`, the reporting set `pl`, `cashflow`,
-  `balances`, `variance`, `outlook`, and the `serve` dashboard.
-- All nine skills written, including `weekly-checkpoint`.
-- 74/74 tests pass (`node --test`).
+  `uncategorized`, `match`, `recategorize`, `assign`, the reporting set `pl`,
+  `cashflow`, `balances`, `variance`, `outlook`, and the `serve` dashboard.
+- All ten skills written, including `weekly-checkpoint` and `budget`.
+- 81/81 tests pass (`node --test`).
 - Demo mode (`--in fixtures/sample.json`) works end-to-end with no API keys
   (`outlook` also takes `--bills fixtures/bills.json`).
 - Input validation hardened: empty numeric args throw (not silently coerce to 0),
@@ -207,7 +215,8 @@ skill has one.
   `config/entities.json`), curated Category-Map rules checking, Google Sheets
   sync for `config/` (one JSON file per hub sheet), autopay "did it actually
   post" verification against history — the aggregation core, balances,
-  budget-vs-actual, and the 14-day outlook are shipped
+  budget-vs-actual, the 14-day outlook, and budget assignment (month-ahead
+  metrics + `assign` write-back + month-funding planner) are shipped
 - Rules engine, next slices: fuzzy payee matching across merchant variants
   (`SQ *SHOP` vs `SQ *SHOP #123`) and persisting a user-curated rule set — the
   derive-from-history slice (`rules` command + skill) is shipped

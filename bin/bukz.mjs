@@ -13,6 +13,7 @@ const COMMANDS = {
   uncategorized: () => import('../src/commands/uncategorized.mjs'),
   match: () => import('../src/commands/match.mjs'),
   recategorize: () => import('../src/commands/recategorize.mjs'),
+  assign: () => import('../src/commands/assign.mjs'),
   pl: () => import('../src/commands/pl.mjs'),
   cashflow: () => import('../src/commands/cashflow.mjs'),
   balances: () => import('../src/commands/balances.mjs'),
@@ -73,6 +74,11 @@ Write (mutating — YNAB only; DRY-RUN by default, --yes to apply)
   recategorize    Change one transaction's category
                     --txn <id> --category "<name>" [--yes|--apply]
                     Refuses splits; category must exist in the cache.
+  assign          Budget work: assign dollars to a category in a month
+                    --month YYYY-MM --category "<name>" --amount N   (one)
+                    --month YYYY-MM --copy-from YYYY-MM              (whole
+                    month: repeat the source budget; shows the plan first)
+                    Amount is the new budgeted total, zero or positive.
 
 Common options
   --provider ynab|xero   Default: BUKZ_PROVIDER in .env, else ynab

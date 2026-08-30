@@ -1,12 +1,15 @@
 import { h, ago } from './util.mjs';
-import { renderCheckpoint, renderPl, renderCashflow, renderVariance } from './views.mjs';
+import { renderCheckpoint, renderPl, renderCashflow, renderBudget } from './views.mjs';
 
 const VIEWS = [
   { id: 'checkpoint', label: 'Checkpoint', render: renderCheckpoint },
   { id: 'pl', label: 'P&L', render: renderPl },
   { id: 'cashflow', label: 'Cashflow', render: renderCashflow },
-  { id: 'variance', label: 'Variance', render: renderVariance },
+  { id: 'budget', label: 'Budget', render: renderBudget },
 ];
+
+// Old route names keep working.
+const ROUTE_ALIASES = { variance: 'budget' };
 
 const state = { data: null, bills: null, dataError: null, billsError: null };
 const ui = {}; // per-view control state (selected month/account/days), survives re-renders
@@ -22,7 +25,8 @@ async function load() {
 }
 
 function activeView() {
-  const id = (location.hash || '#/checkpoint').replace(/^#\//, '');
+  const raw = (location.hash || '#/checkpoint').replace(/^#\//, '');
+  const id = ROUTE_ALIASES[raw] ?? raw;
   return VIEWS.find((v) => v.id === id) ?? VIEWS[0];
 }
 
@@ -46,11 +50,11 @@ function render() {
 
   const demo = state.data.provider === 'fixture';
   meta.replaceChildren(...[
-    demo ? h('span', { class: 'chip demo' }, 'DEMO') : null,
-    h('span', { class: 'muted' }, state.data.provider),
-    h('span', { class: 'muted' }, `pulled ${ago(state.data.pulledAt)}`),
-    h('span', { class: 'muted' }, `${state.data.transactions.length} txns`),
-    state.billsError ? h('span', { class: 'muted', title: state.billsError }, 'no bills registry') : null,
+    demo ? h('span', { class: 'tag' }, 'DEMO') : null,
+    h('span', null, state.data.provider),
+    h('span', null, `pulled ${ago(state.data.pulledAt)}`),
+    h('span', null, `${state.data.transactions.length} txns`),
+    state.billsError ? h('span', { title: state.billsError }, 'no bills registry') : null,
   ].filter(Boolean));
 
   app.replaceChildren(active.render(state, ui, render));
@@ -59,6 +63,16 @@ function render() {
 document.getElementById('refresh').addEventListener('click', async () => {
   await load();
   render();
+});
+
+// Theme toggle — Modernist ships light + derived dark; the choice persists.
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const root = document.documentElement;
+  const current = root.dataset.theme
+    ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = current === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = next;
+  localStorage.setItem('bukz-theme', next);
 });
 
 window.addEventListener('hashchange', render);

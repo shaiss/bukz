@@ -120,16 +120,18 @@ test('variance: June snapshot exposes the planted leaks', () => {
 test('variance: unknown month names the cached months', () => {
   assert.throws(
     () => budgetVariance(txns, fixture.budgetMonths, '2026-05'),
-    /No budget data for 2026-05 \(cached months: 2026-06\)/
+    /No budget data for 2026-05 \(cached months: 2026-06, 2026-07, 2026-08\)/
   );
 });
 
 test('variance: default month falls back to the newest budgeted month', () => {
-  // Newest txn is July 2026, but only June is budgeted → June it is
-  assert.equal(defaultMonth(txns, fixture.budgetMonths), '2026-06');
-  // When the newest txn's month IS budgeted, it wins
-  const withJuly = [...fixture.budgetMonths, { ...fixture.budgetMonths[0], month: '2026-07' }];
-  assert.equal(defaultMonth(txns, withJuly), '2026-07');
+  // Newest txn is July 2026 and July is budgeted → July it is
+  assert.equal(defaultMonth(txns, fixture.budgetMonths), '2026-07');
+  // When the newest txn's month has no snapshot, fall back to newest budgeted
+  const withoutJuly = fixture.budgetMonths.filter((m) => m.month !== '2026-07');
+  assert.equal(defaultMonth(txns, withoutJuly), '2026-08');
+  const older = fixture.budgetMonths.filter((m) => m.month < '2026-07');
+  assert.equal(defaultMonth(txns, older), '2026-06');
   // No budget months at all → newest txn month (budgetVariance gives the error)
   assert.equal(defaultMonth(txns, []), '2026-07');
 });

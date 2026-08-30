@@ -27,6 +27,7 @@ node bin/bukz.mjs pull --full     # re-fetch everything (ignore the cache cursor
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
+node bin/bukz.mjs assign          # MUTATING (YNAB budget): assign dollars; dry-run unless --yes
 
 node --test                        # run all tests
 node --test tests/analysis.test.mjs  # run one test file
@@ -57,7 +58,7 @@ src/server.mjs         read-only localhost server behind `serve` (static SPA
                        modules the CLI runs — one source of truth for numbers
 .claude/skills/        the AI team: bukz-setup, spot-check, anomalies,
                        mismatches, rules, triage, receipts, close-review,
-                       weekly-checkpoint
+                       weekly-checkpoint, budget
 fixtures/generate.mjs  writes sample.json with PLANTED issues — each plant has
                        a matching test assertion; keep them in sync
 ```

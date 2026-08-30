@@ -20,6 +20,9 @@
 //            Starbucks, uncategorized spend with no budget line → variance
 //   PLANT 12 Balances + fixtures/bills.json: Demo Checking green, Demo Credit
 //            Card yellow (thin cushion), Demo Savings red (property tax) → outlook
+//   PLANT 13 July + August budget months: July partially funded with Groceries
+//            under its goal; August (the get-ahead month) only Rent-funded →
+//            monthAhead 35%, planner June→July/→August rows → budget tests
 //
 // Run: node fixtures/generate.mjs
 
@@ -169,16 +172,59 @@ const budgetMonths = [
     budgeted: 5126,
     activity: -4962.44,
     toBeBudgeted: 0,
+    ageOfMoney: 24,
     categories: [
-      { id: 'Rent', name: 'Rent', budgeted: 1800, activity: -1800, balance: 0 },
-      { id: 'Utilities', name: 'Utilities', budgeted: 120, activity: -19.6, balance: 100.4 },
-      { id: 'Groceries', name: 'Groceries', budgeted: 300, activity: -121.19, balance: 178.81 },
-      { id: 'Dining Out', name: 'Dining Out', budgeted: 100, activity: -357.55, balance: -257.55 },
-      { id: 'Subscriptions', name: 'Subscriptions', budgeted: 16, activity: 0, balance: 16 },
-      { id: 'Health & Fitness', name: 'Health & Fitness', budgeted: 50, activity: -45, balance: 5 },
-      { id: 'Software', name: 'Software', budgeted: 100, activity: -87.5, balance: 12.5 },
-      { id: 'Professional Services', name: 'Professional Services', budgeted: 2600, activity: -2500, balance: 100 },
-      { id: 'Transport', name: 'Transport', budgeted: 40, activity: -31.6, balance: 8.4 },
+      { id: 'Rent', name: 'Rent', budgeted: 1800, activity: -1800, balance: 0, goalType: 'MF', goalTarget: 1800 },
+      { id: 'Utilities', name: 'Utilities', budgeted: 120, activity: -19.6, balance: 100.4, goalType: null, goalTarget: null },
+      { id: 'Groceries', name: 'Groceries', budgeted: 300, activity: -121.19, balance: 178.81, goalType: 'NEED', goalTarget: 350 },
+      { id: 'Dining Out', name: 'Dining Out', budgeted: 100, activity: -357.55, balance: -257.55, goalType: null, goalTarget: null },
+      { id: 'Subscriptions', name: 'Subscriptions', budgeted: 16, activity: 0, balance: 16, goalType: 'TB', goalTarget: 16 },
+      { id: 'Health & Fitness', name: 'Health & Fitness', budgeted: 50, activity: -45, balance: 5, goalType: null, goalTarget: null },
+      { id: 'Software', name: 'Software', budgeted: 100, activity: -87.5, balance: 12.5, goalType: 'TB', goalTarget: 100 },
+      { id: 'Professional Services', name: 'Professional Services', budgeted: 2600, activity: -2500, balance: 100, goalType: null, goalTarget: null },
+      { id: 'Transport', name: 'Transport', budgeted: 40, activity: -31.6, balance: 8.4, goalType: null, goalTarget: null },
+    ],
+  },
+  // July — the month being lived in (newest transactions): partially funded,
+  // Rent already matches June so the planner skips it. Groceries sits UNDER
+  // its June budget (and its goal) for the under-goal story.
+  {
+    month: '2026-07',
+    budgeted: 2116,
+    activity: -2355.77,
+    toBeBudgeted: 400,
+    ageOfMoney: 41,
+    categories: [
+      { id: 'Rent', name: 'Rent', budgeted: 1800, activity: -1800, balance: 0, goalType: 'MF', goalTarget: 1800 },
+      { id: 'Utilities', name: 'Utilities', budgeted: 0, activity: -99.1, balance: -99.1, goalType: null, goalTarget: null },
+      { id: 'Groceries', name: 'Groceries', budgeted: 200, activity: -89.9, balance: 110.1, goalType: 'NEED', goalTarget: 350 },
+      { id: 'Dining Out', name: 'Dining Out', budgeted: 0, activity: -126.15, balance: -126.15, goalType: null, goalTarget: null },
+      { id: 'Subscriptions', name: 'Subscriptions', budgeted: 16, activity: 0, balance: 16, goalType: 'TB', goalTarget: 16 },
+      { id: 'Health & Fitness', name: 'Health & Fitness', budgeted: 100, activity: -90, balance: 10, goalType: null, goalTarget: null },
+      { id: 'Software', name: 'Software', budgeted: 0, activity: -87.5, balance: -87.5, goalType: 'TB', goalTarget: 100 },
+      { id: 'Professional Services', name: 'Professional Services', budgeted: 0, activity: 0, balance: 0, goalType: null, goalTarget: null },
+      { id: 'Transport', name: 'Transport', budgeted: 0, activity: 0, balance: 0, goalType: null, goalTarget: null },
+    ],
+  },
+  // August — PLANT 13: the get-ahead month. Only Rent is pre-funded (1800 of
+  // June's 5126 reference), so monthAhead reports 35% funded. No activity —
+  // the month hasn't started. ageOfMoney is null for future months.
+  {
+    month: '2026-08',
+    budgeted: 1800,
+    activity: 0,
+    toBeBudgeted: 0,
+    ageOfMoney: null,
+    categories: [
+      { id: 'Rent', name: 'Rent', budgeted: 1800, activity: 0, balance: 1800, goalType: 'MF', goalTarget: 1800 },
+      { id: 'Utilities', name: 'Utilities', budgeted: 0, activity: 0, balance: 0, goalType: null, goalTarget: null },
+      { id: 'Groceries', name: 'Groceries', budgeted: 0, activity: 0, balance: 0, goalType: 'NEED', goalTarget: 350 },
+      { id: 'Dining Out', name: 'Dining Out', budgeted: 0, activity: 0, balance: 0, goalType: null, goalTarget: null },
+      { id: 'Subscriptions', name: 'Subscriptions', budgeted: 0, activity: 0, balance: 0, goalType: 'TB', goalTarget: 16 },
+      { id: 'Health & Fitness', name: 'Health & Fitness', budgeted: 0, activity: 0, balance: 0, goalType: null, goalTarget: null },
+      { id: 'Software', name: 'Software', budgeted: 0, activity: 0, balance: 0, goalType: 'TB', goalTarget: 100 },
+      { id: 'Professional Services', name: 'Professional Services', budgeted: 0, activity: 0, balance: 0, goalType: null, goalTarget: null },
+      { id: 'Transport', name: 'Transport', budgeted: 0, activity: 0, balance: 0, goalType: null, goalTarget: null },
     ],
   },
 ];

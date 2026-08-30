@@ -48,6 +48,7 @@ export function budgetVariance(transactions, budgetMonths, month) {
       budgeted: round2(c.budgeted),
       actual: fromCents(cents),
       remaining: fromCents(toCents(c.budgeted) - cents),
+      target: c.goalTarget != null ? round2(c.goalTarget) : null,
     });
   }
   for (const [key, cents] of actualCents) {
@@ -55,7 +56,7 @@ export function budgetVariance(transactions, budgetMonths, month) {
     // Snapshot categories above keep full sign behavior (refunds net against
     // spend); this filter only applies to categories with no budget line.
     if (cents <= 0) continue;
-    rows.push({ category: displayFor.get(key) ?? key, budgeted: 0, actual: fromCents(cents), remaining: fromCents(-cents) });
+    rows.push({ category: displayFor.get(key) ?? key, budgeted: 0, actual: fromCents(cents), remaining: fromCents(-cents), target: null });
   }
 
   // Worst overshoot first, then name — deterministic.

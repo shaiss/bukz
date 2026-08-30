@@ -1,6 +1,7 @@
 import { parse, out } from '../cli.mjs';
 import { loadData, meta } from '../data.mjs';
 import { budgetVariance, defaultMonth } from '../analysis/variance.mjs';
+import { monthAhead } from '../analysis/budget.mjs';
 
 // Budget vs actual for one calendar month. Scoped by --month, not
 // --since/--until: a month's variance needs the whole month of transactions,
@@ -24,5 +25,6 @@ export async function run(argv) {
   out({
     meta: meta(data, opts),
     ...budgetVariance(data.transactions, data.budgetMonths, month),
+    ahead: monthAhead(data.transactions, data.budgetMonths),
   });
 }

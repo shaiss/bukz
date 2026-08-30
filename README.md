@@ -30,6 +30,7 @@ Then just talk to it:
 | `triage` | Proposes categories for the uncategorized, reviews the unapproved |
 | `receipts` | Extracts receipt images/PDFs → ledger CSV, matches them to transactions, flags receipts missing from the books |
 | `weekly-checkpoint` | The weekly status row: balances, autopay check, 14-day cash coverage with 🔴/🟡/🟢 per account, flags, next actions |
+| `budget` | YNAB budget work: month-ahead progress, Age of Money, goal targets, assigning dollars (dry-run first, `--yes` after your OK), funding next month like last month |
 | `close-review` | Runs everything, delivers the month's P&L / budget-vs-actual / cashflow, synthesizes one month-end report with an action checklist |
 
 Under the hood each skill drives a deterministic CLI (`node bin/bukz.mjs help`) and applies bookkeeper judgment to its JSON output. Numbers come from code; opinions come from the model; fixes come from **you** — bukz is strictly read-only against your books.

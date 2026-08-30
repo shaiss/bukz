@@ -44,7 +44,35 @@ export function ago(iso) {
 }
 
 export function statusChip(status) {
-  return h('span', { class: `chip ${status}`, title: status }, status === 'green' ? '🟢' : status === 'yellow' ? '🟡' : '🔴');
+  return h('span', { class: `dot ${status}`, role: 'img', 'aria-label': status, title: status });
+}
+
+// Copy-to-clipboard with a transient "✓" on the clicked element. The SPA
+// never writes data — this is the closest it comes: clipboard only, so budget
+// changes still flow through the confirmed CLI commands it hands you.
+export function copyOnClick(text) {
+  return (e) => {
+    const done = () => {
+      const mark = h('span', { class: 'copy-ok' }, '✓ copied');
+      e.currentTarget.append(mark);
+      setTimeout(() => mark.remove(), 1400);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  };
+}
+
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.append(ta);
+  ta.select();
+  document.execCommand('copy');
+  ta.remove();
+  done();
 }
 
 // A read-only drill-down: transactions matching whatever the caller filtered,
@@ -79,7 +107,7 @@ export function showTransactions(title, rows) {
         h('div', { class: 'modal-head' },
           h('strong', null, title),
           h('span', { class: 'muted' }, `${rows.length} transactions`),
-          h('button', { onclick: close }, '✕ close')),
+          h('button', { onclick: close }, 'close ×')),
         table)),
   );
   root.hidden = false;

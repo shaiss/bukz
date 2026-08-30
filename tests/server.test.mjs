@@ -43,7 +43,7 @@ test('serve: data and bills endpoints read the fixture files', async (t) => {
   const data = await (await fetch(base + '/api/data')).json();
   assert.equal(data.transactions.length, 85);
   assert.equal(data.accounts.length, 3);
-  assert.equal(data.budgetMonths.length, 1);
+  assert.equal(data.budgetMonths.length, 3);
 
   const bills = await (await fetch(base + '/api/bills')).json();
   assert.equal(bills.length, 6);

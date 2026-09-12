@@ -24,6 +24,10 @@
 //            under its goal; August (the get-ahead month) only Rent-funded →
 //            monthAhead 35%, planner June→July/→August rows → budget tests
 //
+// Curated rule-check (fixtures/rules.json, not planted here) reuses PLANT 1
+// (Netflix→Subscriptions violation) and PLANT 8 (Staples uncategorized lead).
+// Sheets sync demo uses fixtures/sheets-hub.json (no live Google credentials).
+//
 // Run: node fixtures/generate.mjs
 
 import { writeFileSync } from 'node:fs';

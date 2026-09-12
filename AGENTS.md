@@ -36,7 +36,10 @@ node bin/bukz.mjs help            # full CLI reference
 node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental)
 node bin/bukz.mjs pull --full     # ignore the cursor, re-fetch everything
-node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncategorized, match, categories, budgets)
+node bin/bukz.mjs sync-config     # hub Sheet → config/bills.json + config/rules.json
+                                  # demo: --from fixtures/sheets-hub.json
+node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, rule-check,
+                                  #  uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
 node bin/bukz.mjs recategorize    # MUTATING (YNAB): --txn <id> --category "<name>"; dry-run unless --yes
@@ -49,7 +52,7 @@ node fixtures/generate.mjs         # regenerate demo fixtures
 
 Every analysis command accepts `--in FILE` — `--in fixtures/sample.json` is demo mode
 and works without API keys. `--since YYYY-MM-DD` filters; `--provider ynab|xero`
-selects the source.
+selects the source. Curated rules: `rule-check --in fixtures/sample.json --rules fixtures/rules.json`.
 
 ## Architecture map
 
@@ -59,31 +62,34 @@ src/cli.mjs             arg parsing + shared output helpers (parse, num, out)
 src/env.mjs             tiny .env loader (zero deps)
 src/data.mjs            cache I/O (atomic writes + incremental merge);
                         data/transactions.json is the analysis input
-src/config.mjs          loader for config/ — the gitignored, curated registries
-                        (bills.json, entities.json); *.example.json are committed
+src/config.mjs          loader + atomic writer for config/ — gitignored curated
+                        registries (bills.json, rules.json, entities.json);
+                        *.example.json are committed; sync-config pulls bills+rules
+src/sheets/             Google Sheets read-path: service-account JWT auth,
+                        values.get client, grid→JSON parsers for Bills/Rules tabs
 src/server.mjs          the read-only localhost server behind `serve`: static
                         SPA from web/, the analysis modules for browser import,
                         and /api/data + /api/bills (re-read per request)
 src/providers/          ynab.mjs, xero.mjs — normalize to the shared transaction
                         shape documented in providers/index.mjs
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
-                        anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs;
-                        reporting: money.mjs (cent math), period.mjs (date
-                        helpers), pl.mjs, cashflow.mjs, variance.mjs, outlook.mjs;
-                        budget work: budget.mjs (monthAhead, planAssign,
-                        planMonthFunding)
+                        anomalies.mjs, mismatches.mjs, rules.mjs,
+                        curated-rules.mjs, sample.mjs; reporting: money.mjs
+                        (cent math), period.mjs, pl.mjs, cashflow.mjs,
+                        variance.mjs, outlook.mjs; budget work: budget.mjs
 src/commands/           one thin wrapper per CLI command (read + write/mutating)
 fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
                         matching test assertion in tests/. fixtures/bills.json
-                        is the demo bills registry (static, not generated)
+                        + fixtures/rules.json are demo registries;
+                        fixtures/sheets-hub.json stands in for Sheets API values
 .claude/skills/         the AI team: bukz-setup, spot-check, anomalies,
                         mismatches, rules, triage, receipts, close-review,
                         weekly-checkpoint, budget
 .claude/skills/_shared/ shared skill content (see below); not a skill itself
 .claude/settings.json   permission policy (.env is deny-listed)
 config/                 machine-local curated data (gitignored except templates):
-                        bills.json powers `outlook`, entities.json maps account→
-                        entity for future entity-sliced reports
+                        bills.json powers `outlook`, rules.json powers `rule-check`,
+                        entities.json maps account→entity for future entity reports
 web/                    the dashboard SPA (index.html, app.js, views.mjs,
                         util.mjs, style.css) — zero dependencies, no build step;
                         it imports the SAME pure analysis modules the CLI runs,
@@ -196,14 +202,18 @@ skill has one.
 - Both providers (YNAB, Xero) implemented; YNAB is read + write (transactions,
   category fixes, budget assignments; balances + budget months incl. Age of
   Money and goal targets), Xero is read-only (transactions).
-- All eighteen CLI commands implemented: `check`, `budgets`, `pull`,
-  `categories`, `spot-check`, `anomalies`, `mismatches`, `rules`,
-  `uncategorized`, `match`, `recategorize`, `assign`, the reporting set `pl`,
-  `cashflow`, `balances`, `variance`, `outlook`, and the `serve` dashboard.
+- Google Sheets hub read-path shipped: `sync-config` pulls Bills + Rules tabs
+  into `config/bills.json` + `config/rules.json` (service-account JWT, zero
+  deps); demo via `--from fixtures/sheets-hub.json`. `rule-check` flags
+  transactions against curated exact payee→category rules.
+- CLI includes `check`, `budgets`, `pull`, `sync-config`, `categories`,
+  `spot-check`, `anomalies`, `mismatches`, `rules`, `rule-check`,
+  `uncategorized`, `match`, `recategorize`, `assign`, reporting (`pl`,
+  `cashflow`, `balances`, `variance`, `outlook`), and `serve`.
 - All ten skills written, including `weekly-checkpoint` and `budget`.
-- 81/81 tests pass (`node --test`).
 - Demo mode (`--in fixtures/sample.json`) works end-to-end with no API keys
-  (`outlook` also takes `--bills fixtures/bills.json`).
+  (`outlook` also takes `--bills fixtures/bills.json`; curated rules:
+  `rule-check --rules fixtures/rules.json`).
 - Input validation hardened: empty numeric args throw (not silently coerce to 0),
   and calendar dates are round-trip validated through the `Date` constructor so
   impossible dates like `2026-02-31` are rejected instead of rolling over.
@@ -212,12 +222,11 @@ skill has one.
 
 - Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider, Xero balances
 - Reporting, next slices: entity-sliced P&L (`pl --entity` via
-  `config/entities.json`), curated Category-Map rules checking, Google Sheets
-  sync for `config/` (one JSON file per hub sheet), autopay "did it actually
-  post" verification against history — the aggregation core, balances,
-  budget-vs-actual, the 14-day outlook, and budget assignment (month-ahead
-  metrics + `assign` write-back + month-funding planner) are shipped
+  `config/entities.json`), Sheets write-back / multi-tab hub sync beyond
+  bills+rules, autopay "did it actually post" verification — aggregation core,
+  balances, budget-vs-actual, 14-day outlook, budget assignment, Sheets→config
+  read-path, and curated `rule-check` are shipped
 - Rules engine, next slices: fuzzy payee matching across merchant variants
-  (`SQ *SHOP` vs `SQ *SHOP #123`) and persisting a user-curated rule set — the
-  derive-from-history slice (`rules` command + skill) is shipped
+  (`SQ *SHOP` vs `SQ *SHOP #123`) — derive-from-history (`rules`) and exact
+  curated check (`rule-check` + Sheets sync) are shipped
 - Packaging as an installable Claude Code plugin

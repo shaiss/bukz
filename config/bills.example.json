@@ -7,7 +7,7 @@
     "paidFrom": "Demo Checking",
     "autopay": "yes",
     "active": true,
-    "notes": "Rent"
+    "notes": "Rent — sheet columns: name|amount|cadence|dayOfMonth|month|anchor|paidFrom|autopay|active|notes (see docs/sheets-config.md); or sync-config from the hub sheet"
   },
   {
     "name": "Cedar Utilities",

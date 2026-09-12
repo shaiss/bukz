@@ -1,0 +1,26 @@
+{
+  "bills": {
+    "tab": "Bills",
+    "values": [
+      ["name", "amount", "cadence", "dayOfMonth", "month", "anchor", "paidFrom", "autopay", "active", "notes"],
+      ["Maple Property Management", "1800", "monthly", "1", "", "", "Demo Checking", "yes", "TRUE", "Rent"],
+      ["Cedar Utilities", "115", "monthly", "18", "", "", "Demo Checking", "yes", "true", ""],
+      ["Riverside Water & Sewer", "90", "quarterly", "10", "2", "", "Demo Checking", "yes", "yes", "Feb/May/Aug/Nov"],
+      ["Lakeside Cleaner", "60", "biweekly", "", "", "2026-01-05", "Demo Checking", "no", "1", "Every other Monday"],
+      ["Hometown Insurance", "", "annual", "5", "3", "", "Demo Savings", "no", "true", "Amount varies"],
+      ["Elm Landscaping", "", "manual", "", "", "", "Demo Checking", "no", "true", "Seasonal"],
+      ["Retired Gym", "25", "monthly", "2", "", "", "Demo Checking", "yes", "FALSE", "Cancelled"]
+    ]
+  },
+  "rules": {
+    "tab": "Rules",
+    "values": [
+      ["payee", "category", "active", "notes"],
+      ["Netflix", "Subscriptions", "TRUE", "Streaming"],
+      ["Staples", "Office Supplies", "yes", ""],
+      ["Amazon Web Services", "Software", "true", ""],
+      ["Retired Example Payee", "Other", "false", "Ignored when inactive"],
+      ["", "ShouldSkip", "true", "Empty payee rows are skipped"]
+    ]
+  }
+}

@@ -38,12 +38,14 @@ Under the hood each skill drives a deterministic CLI (`node bin/bukz.mjs help`) 
 The reporting commands (`pl`, `cashflow`, `balances`, `variance`, `outlook`) turn the cached books into the month's statements and a 14-day cash look-ahead. `outlook` reads a local bills registry — copy `config/bills.example.json` to `config/bills.json` and list your recurring bills (gitignored, like all your data), or pull both bills and curated payee→category rules from a hub Google Sheet:
 
 ```sh
-node bin/bukz.mjs sync-config                                    # live (needs GOOGLE_* in .env)
+# Live hydrate — CLI flags preferred (no .env edit; skills must not touch .env)
+node bin/bukz.mjs sync-config --service-account ./sa.json --spreadsheet-id <id>
 node bin/bukz.mjs sync-config --from fixtures/sheets-hub.json    # demo / CI, no credentials
 node bin/bukz.mjs rule-check --in fixtures/sample.json --rules fixtures/rules.json
 ```
 
-See `docs/sheets-config.md` for the service-account setup and sheet column layouts.
+After sync, commands keep reading local `config/*.json` via `loadConfig` — Sheets is
+a hydrate step, not a live dependency. See `docs/sheets-config.md`.
 
 ## A dashboard, if you want one
 

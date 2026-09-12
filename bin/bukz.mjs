@@ -33,9 +33,12 @@ Setup & data
   budgets         List YNAB budgets / Xero organisations
   pull            Fetch transactions + categories into data/transactions.json
                   Incremental by default (deltas only); --full re-fetches everything
-  sync-config     Pull hub Google Sheet tabs → config/bills.json + config/rules.json
-                    (atomic write). Live: needs GOOGLE_* env (see .env.example).
-                    Demo: --from fixtures/sheets-hub.json
+  sync-config     Hydrate config/bills.json + config/rules.json from hub Sheet
+                    (atomic write). Prefer CLI flags (no .env edit):
+                      --service-account FILE --spreadsheet-id ID
+                      [--bills-tab Bills] [--rules-tab Rules]
+                    Demo/CI: --from fixtures/sheets-hub.json
+                    Then outlook/rule-check keep using local config/*.json
                     Column layouts: docs/sheets-config.md
   categories      List categories from the local cache
 

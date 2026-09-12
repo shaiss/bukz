@@ -11,29 +11,46 @@ machine-local (gitignored) files under `config/`:
 This is the **read** path only. The sheet remains the human review/edit surface;
 bukz does not write back to Sheets in this slice.
 
-## Auth (machine-to-machine)
+**Local config stays preferred.** `sync-config` is a hydrate step that writes
+`config/*.json`. `outlook`, `rule-check`, and friends keep calling `loadConfig`
+and never hit Sheets at runtime. If a local file already exists, sync updates it;
+commands do not require a live Sheet connection.
 
-Same spirit as Xero's Custom Connection — no browser OAuth dance on the
-bookkeeper's laptop.
+## Auth (machine-to-machine) — CLI flags preferred
+
+Same spirit as Xero's Custom Connection — no browser OAuth dance.
 
 1. In Google Cloud Console, create a service account and download its JSON key.
 2. Enable the **Google Sheets API** for that GCP project.
 3. Share the hub spreadsheet with the service account's `client_email` as **Viewer**.
-4. Put the key file somewhere on this machine (outside the repo is fine) and set:
+4. Run sync with **CLI flags** (no `.env` edit required — skills must not touch `.env`):
 
 ```sh
-# .env — never commit; never paste into chat
-GOOGLE_SERVICE_ACCOUNT_FILE=/absolute/or/repo-relative/path/to/sa.json
+node bin/bukz.mjs sync-config \
+  --service-account /path/to/sa.json \
+  --spreadsheet-id theSpreadsheetIdFromTheUrl
+# Optional tab renames:
+#   --bills-tab Bills --rules-tab Rules
+```
+
+Optional env fallbacks (handy for a personal laptop; never required for the happy path):
+
+```sh
+# .env — never commit; never paste into chat; skills must not read or rewrite this
+GOOGLE_SERVICE_ACCOUNT_FILE=/path/to/sa.json
 GOOGLE_SHEETS_SPREADSHEET_ID=theSpreadsheetIdFromTheUrl
-# Optional tab renames (defaults shown):
 # GOOGLE_SHEETS_BILLS_TAB=Bills
 # GOOGLE_SHEETS_RULES_TAB=Rules
 ```
 
-`node bin/bukz.mjs check` reports booleans for whether those env vars are set,
-and optionally whether a 1-cell Sheets read succeeds — never secret values.
+`sync-config` / `sheets/*` never open or rewrite `.env`. `node bin/bukz.mjs check`
+reports booleans for whether Sheets env vars are set — never secret values.
 
 ## Column layouts
+
+Bills schema shape matches `config/bills.example.json` (and any local draft
+`config/bills.json` you keep gitignored as a personal reference — **do not commit
+personal bills**).
 
 ### Bills tab
 
@@ -41,8 +58,8 @@ Header row (order flexible; names matched case-insensitively):
 
 `name | amount | cadence | dayOfMonth | month | anchor | paidFrom | autopay | active | notes`
 
-Field meanings match `config/bills.example.json`. Empty `amount` → `null`.
-`active` accepts `true`/`yes`/`1` or `false`/`no`/`0` (default true).
+Empty `amount` → `null`. `active` accepts `true`/`yes`/`1` or `false`/`no`/`0`
+(default true).
 
 ### Rules tab
 
@@ -50,8 +67,7 @@ Field meanings match `config/bills.example.json`. Empty `amount` → `null`.
 
 - **payee** — exact string match against transaction `payee` (no fuzzy variants yet;
   `payeePattern` is accepted as an alternate header name for the same column).
-- **category** — expected category name (must already exist in the books when you
-  later fix a row; `rule-check` only flags).
+- **category** — expected category name (`rule-check` only flags; it does not invent categories).
 - **active** — inactive rows are ignored by `rule-check`.
 - **notes** — optional free text.
 
@@ -60,10 +76,10 @@ See also `config/rules.example.json`.
 ## Commands
 
 ```sh
-# Live pull (needs Sheets env vars)
-node bin/bukz.mjs sync-config
+# Live hydrate via CLI flags (no .env required)
+node bin/bukz.mjs sync-config --service-account ./sa.json --spreadsheet-id <id>
 
-# Demo / offline / CI — no credentials
+# Demo / offline / CI — no credentials; does not alter fixtures/sample.json
 node bin/bukz.mjs sync-config --from fixtures/sheets-hub.json
 
 # Check cache (or demo fixture) against curated rules

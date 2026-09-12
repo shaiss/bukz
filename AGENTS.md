@@ -37,7 +37,9 @@ node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental)
 node bin/bukz.mjs pull --full     # ignore the cursor, re-fetch everything
 node bin/bukz.mjs sync-config     # hub Sheet → config/bills.json + config/rules.json
+                                  # prefer: --service-account FILE --spreadsheet-id ID
                                   # demo: --from fixtures/sheets-hub.json
+                                  # (never requires editing .env; skills must not touch .env)
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, rule-check,
                                   #  uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
@@ -66,7 +68,10 @@ src/config.mjs          loader + atomic writer for config/ — gitignored curate
                         registries (bills.json, rules.json, entities.json);
                         *.example.json are committed; sync-config pulls bills+rules
 src/sheets/             Google Sheets read-path: service-account JWT auth,
-                        values.get client, grid→JSON parsers for Bills/Rules tabs
+                        values.get client, grid→JSON parsers for Bills/Rules tabs.
+                        CLI flags preferred for credentials; optional env fallback;
+                        never opens/rewrites `.env`. sync-config hydrates local
+                        config/; outlook/rule-check keep using loadConfig.
 src/server.mjs          the read-only localhost server behind `serve`: static
                         SPA from web/, the analysis modules for browser import,
                         and /api/data + /api/bills (re-read per request)

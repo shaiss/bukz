@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parseBillsGrid, parseRulesGrid } from '../src/sheets/parse.mjs';
 import { loadHubFixture } from '../src/sheets/client.mjs';
+import { resolveSheetsCredentials, sheetsConfigured } from '../src/sheets/auth.mjs';
 import { checkCuratedRules } from '../src/analysis/curated-rules.mjs';
 import { saveConfig, loadConfig, configPath } from '../src/config.mjs';
 
@@ -228,4 +229,92 @@ test('CLI check reports Sheets env booleans without secrets', () => {
   // Never leak a path/token string into env block values that aren't the
   // YNAB_BUDGET_ID sentinel.
   assert.ok(!JSON.stringify(out.env).includes('BEGIN PRIVATE KEY'));
+});
+
+// ── PM acceptance: flags > .env; local config preferred; fixtures untouched ─
+
+test('resolveSheetsCredentials: CLI flags win over env (no .env file needed)', () => {
+  const prevFile = process.env.GOOGLE_SERVICE_ACCOUNT_FILE;
+  const prevId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  try {
+    process.env.GOOGLE_SERVICE_ACCOUNT_FILE = '/env/sa.json';
+    process.env.GOOGLE_SHEETS_SPREADSHEET_ID = 'env-sheet-id';
+    const creds = resolveSheetsCredentials({
+      serviceAccountFile: '/flag/sa.json',
+      spreadsheetId: 'flag-sheet-id',
+      billsTab: 'HubBills',
+      rulesTab: 'HubRules',
+    });
+    assert.equal(creds.serviceAccountFile, '/flag/sa.json');
+    assert.equal(creds.spreadsheetId, 'flag-sheet-id');
+    assert.equal(creds.billsTab, 'HubBills');
+    assert.equal(creds.rulesTab, 'HubRules');
+    assert.equal(sheetsConfigured({
+      serviceAccountFile: '/flag/sa.json',
+      spreadsheetId: 'flag-sheet-id',
+    }), true);
+  } finally {
+    if (prevFile === undefined) delete process.env.GOOGLE_SERVICE_ACCOUNT_FILE;
+    else process.env.GOOGLE_SERVICE_ACCOUNT_FILE = prevFile;
+    if (prevId === undefined) delete process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+    else process.env.GOOGLE_SHEETS_SPREADSHEET_ID = prevId;
+  }
+});
+
+test('CLI sync-config without flags/env errors with flag guidance (not .env edit)', () => {
+  const res = runBukz(['sync-config'], {
+    GOOGLE_SERVICE_ACCOUNT_FILE: '',
+    GOOGLE_SHEETS_SPREADSHEET_ID: '',
+  });
+  assert.notEqual(res.status, 0);
+  const msg = `${res.stderr}${res.stdout}`;
+  assert.match(msg, /--service-account|--spreadsheet-id|fixtures\/sheets-hub/);
+  assert.doesNotMatch(msg, /edit \.env|set the path in \.env|rewrite \.env/i);
+});
+
+test('CLI sync-config --from reports localConfigPreferred (hydrate, not live dep)', () => {
+  const billsPath = configPath('bills.json');
+  const rulesPath = configPath('rules.json');
+  const backupDir = mkdtempSync(join(tmpdir(), 'bukz-cfg2-'));
+  const hadBills = existsSync(billsPath);
+  const hadRules = existsSync(rulesPath);
+  try {
+    if (hadBills) cpSync(billsPath, join(backupDir, 'bills.json'));
+    if (hadRules) cpSync(rulesPath, join(backupDir, 'rules.json'));
+    const res = runBukz(['sync-config', '--from', 'fixtures/sheets-hub.json'], {
+      GOOGLE_SERVICE_ACCOUNT_FILE: '',
+      GOOGLE_SHEETS_SPREADSHEET_ID: '',
+    });
+    assert.equal(res.status, 0, res.stderr);
+    const out = JSON.parse(res.stdout);
+    assert.equal(out.meta.localConfigPreferred, true);
+    // Hydrated files are what loadConfig would read next.
+    assert.ok(existsSync(billsPath));
+    assert.ok(existsSync(rulesPath));
+    assert.equal(loadConfig('rules.json').find((r) => r.payee === 'Netflix').category, 'Subscriptions');
+  } finally {
+    if (hadBills) cpSync(join(backupDir, 'bills.json'), billsPath);
+    else rmSync(billsPath, { force: true });
+    if (hadRules) cpSync(join(backupDir, 'rules.json'), rulesPath);
+    else rmSync(rulesPath, { force: true });
+    rmSync(backupDir, { recursive: true, force: true });
+  }
+});
+
+test('demo fixtures sample.json + bills.json are unchanged planted contents', () => {
+  // Acceptance: this PR must not alter planted demo fixtures — only add
+  // separate curated-rules / sheets-hub fixtures.
+  const sample = JSON.parse(readFileSync(join(ROOT, 'fixtures/sample.json'), 'utf8'));
+  const bills = JSON.parse(readFileSync(join(ROOT, 'fixtures/bills.json'), 'utf8'));
+  assert.equal(sample.transactions.length, 85);
+  assert.ok(
+    sample.transactions.some((t) => t.payee === 'Netflix' && t.category === 'Groceries')
+  );
+  // fixtures/bills.json planted names (do not rewrite this file in this PR)
+  const names = bills.map((b) => b.name);
+  assert.ok(names.includes('Gym Membership'));
+  assert.ok(names.includes('Property Tax'));
+  assert.equal(bills.length, 6);
+  assert.ok(existsSync(join(ROOT, 'fixtures/rules.json')));
+  assert.ok(existsSync(join(ROOT, 'fixtures/sheets-hub.json')));
 });

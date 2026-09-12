@@ -1,9 +1,12 @@
 // Google service-account JWT → access token (Sheets API, read-only).
 // Machine-to-machine, same spirit as Xero's Custom Connection: no browser
 // flow. Zero npm deps — Node crypto signs RS256; fetch exchanges the JWT.
+//
+// Credentials come from CLI flags (preferred for skill/happy-path sync) or
+// optional process.env fallback. This module never reads or writes `.env`.
 import { createSign } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { ROOT } from '../env.mjs';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -15,19 +18,63 @@ function b64urlJson(obj) {
   return Buffer.from(JSON.stringify(obj)).toString('base64url');
 }
 
-function loadServiceAccount() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_FILE;
-  if (!raw) {
+function resolveKeyPath(raw) {
+  if (isAbsolute(raw)) return raw;
+  // Prefer cwd (matches how users pass relative CLI paths), then repo root.
+  const fromCwd = resolve(process.cwd(), raw);
+  if (existsSync(fromCwd)) return fromCwd;
+  return resolve(ROOT, raw);
+}
+
+// Resolve Sheets credentials. `opts` (from CLI flags) wins over env.
+// Never opens `.env` — env is whatever the process already has.
+export function resolveSheetsCredentials(opts = {}) {
+  const serviceAccountFile =
+    opts.serviceAccountFile ||
+    opts['service-account'] ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_FILE ||
+    null;
+  const spreadsheetId =
+    opts.spreadsheetId ||
+    opts['spreadsheet-id'] ||
+    process.env.GOOGLE_SHEETS_SPREADSHEET_ID ||
+    null;
+  const billsTab =
+    opts.billsTab ||
+    opts['bills-tab'] ||
+    process.env.GOOGLE_SHEETS_BILLS_TAB ||
+    'Bills';
+  const rulesTab =
+    opts.rulesTab ||
+    opts['rules-tab'] ||
+    process.env.GOOGLE_SHEETS_RULES_TAB ||
+    'Rules';
+  return {
+    serviceAccountFile: serviceAccountFile ? String(serviceAccountFile).trim() : null,
+    spreadsheetId: spreadsheetId ? String(spreadsheetId).trim() : null,
+    billsTab: String(billsTab).trim() || 'Bills',
+    rulesTab: String(rulesTab).trim() || 'Rules',
+  };
+}
+
+export function sheetsConfigured(opts = {}) {
+  const c = resolveSheetsCredentials(opts);
+  return Boolean(c.serviceAccountFile && c.spreadsheetId);
+}
+
+function loadServiceAccount(serviceAccountFile) {
+  if (!serviceAccountFile) {
     throw new Error(
-      'GOOGLE_SERVICE_ACCOUNT_FILE is not set. See .env.example — path to a Google ' +
-        'service-account JSON key with Sheets read access to the hub spreadsheet.'
+      'Google service-account key not set. Pass --service-account <path> to sync-config, ' +
+        'or optionally set GOOGLE_SERVICE_ACCOUNT_FILE in the environment. ' +
+        'See docs/sheets-config.md.'
     );
   }
-  const path = resolve(ROOT, raw);
+  const path = resolveKeyPath(serviceAccountFile);
   if (!existsSync(path)) {
     throw new Error(
-      `GOOGLE_SERVICE_ACCOUNT_FILE points at a missing file: ${path}. ` +
-        'Copy the service-account key onto this machine and set the path in .env.'
+      `Service-account key not found: ${path}. Pass a real path via --service-account ` +
+        '(or GOOGLE_SERVICE_ACCOUNT_FILE). Never commit the key file.'
     );
   }
   let sa;
@@ -62,13 +109,10 @@ function signJwt(sa) {
   return `${unsigned}.${sig}`;
 }
 
-export function sheetsConfigured() {
-  return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_FILE && process.env.GOOGLE_SHEETS_SPREADSHEET_ID);
-}
-
-export async function accessToken() {
+export async function accessToken(opts = {}) {
   if (tokenCache && Date.now() < tokenCache.expiresAt - 60_000) return tokenCache.token;
-  const sa = loadServiceAccount();
+  const { serviceAccountFile } = resolveSheetsCredentials(opts);
+  const sa = loadServiceAccount(serviceAccountFile);
   const assertion = signJwt(sa);
   const res = await fetch(TOKEN_URL, {
     method: 'POST',

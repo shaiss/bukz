@@ -35,7 +35,17 @@ Then just talk to it:
 
 Under the hood each skill drives a deterministic CLI (`node bin/bukz.mjs help`) and applies bookkeeper judgment to its JSON output. Numbers come from code; opinions come from the model; fixes come from **you** — bukz is strictly read-only against your books.
 
-The reporting commands (`pl`, `cashflow`, `balances`, `variance`, `outlook`) turn the cached books into the month's statements and a 14-day cash look-ahead. `outlook` reads a local bills registry — copy `config/bills.example.json` to `config/bills.json` and list your recurring bills (gitignored, like all your data); it then projects each account's balance against the bills due and rates coverage 🔴/🟡/🟢.
+The reporting commands (`pl`, `cashflow`, `balances`, `variance`, `outlook`) turn the cached books into the month's statements and a 14-day cash look-ahead. `outlook` reads a local bills registry — copy `config/bills.example.json` to `config/bills.json` and list your recurring bills (gitignored, like all your data), or pull both bills and curated payee→category rules from a hub Google Sheet:
+
+```sh
+# Live hydrate — CLI flags preferred (no .env edit; skills must not touch .env)
+node bin/bukz.mjs sync-config --service-account ./sa.json --spreadsheet-id <id>
+node bin/bukz.mjs sync-config --from fixtures/sheets-hub.json    # demo / CI, no credentials
+node bin/bukz.mjs rule-check --in fixtures/sample.json --rules fixtures/rules.json
+```
+
+After sync, commands keep reading local `config/*.json` via `loadConfig` — Sheets is
+a hydrate step, not a live dependency. See `docs/sheets-config.md`.
 
 ## A dashboard, if you want one
 
@@ -51,7 +61,7 @@ A read-only visualization layer over the same cache: the weekly checkpoint with 
 - Keys live in `.env`, which is **gitignored** and **permission-denied** to Claude in `.claude/settings.json`.
 - Every skill is instructed never to read `.env` and never to ask you for a token in chat.
 - `node bin/bukz.mjs check` diagnoses config by printing booleans only.
-- Getting keys: **YNAB** — app.ynab.com → Account Settings → Developer Settings → Personal Access Token. **Xero** — developer.xero.com → New app → *Custom Connection* with the three `*.read` accounting scopes.
+- Getting keys: **YNAB** — app.ynab.com → Account Settings → Developer Settings → Personal Access Token. **Xero** — developer.xero.com → New app → *Custom Connection* with the three `*.read` accounting scopes. **Google Sheets hub** — GCP service account JSON key + share the spreadsheet with that email (Viewer); see `docs/sheets-config.md`.
 
 Honest caveat: no local setup can make secrets provably invisible to a tool that can execute code on your machine. These layers make access denied-by-default and auditable — and the code never prints secret values. Use read-only tokens where offered, and rotate anything you suspect was exposed.
 
@@ -60,9 +70,10 @@ Honest caveat: no local setup can make secrets provably invisible to a tool that
 - ~~Write-back (apply approved category fixes via the YNAB API)~~ — shipped: `recategorize` (dry-run by default, `--yes` to apply)
 - ~~Reporting (P&L, cashflow, budget-vs-actual, 14-day cash outlook)~~ — shipped: `pl`, `cashflow`, `balances`, `variance`, `outlook` + the `weekly-checkpoint` and `close-review` skills
 - ~~Visualization layer~~ — shipped: `serve` — a read-only localhost dashboard SPA over the cache
-- Entity-sliced P&L, curated category rules, Google Sheets sync for the bills registry
+- ~~Google Sheets → config sync (bills + curated rules) + curated rule-check~~ — shipped: `sync-config`, `rule-check` (exact payee match; see `docs/sheets-config.md`)
+- Entity-sliced P&L; Sheets write-back / richer hub sync
 - Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider
-- Rules engine ("payee X is always category Y") the AI can propose additions to
+- Fuzzy payee matching for curated rules (`SQ *SHOP` vs `SQ *SHOP #123`)
 - Packaging as an installable Claude Code plugin
 
 ## License

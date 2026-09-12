@@ -1,0 +1,25 @@
+[
+  {
+    "payee": "Netflix",
+    "category": "Subscriptions",
+    "active": true,
+    "notes": "Exact payee match. Sheet columns: payee | category | active | notes"
+  },
+  {
+    "payee": "Staples",
+    "category": "Office Supplies",
+    "active": true,
+    "notes": "Curated expectation — not derived from history dominance"
+  },
+  {
+    "payee": "Amazon Web Services",
+    "category": "Software",
+    "active": true
+  },
+  {
+    "payee": "Retired Example Payee",
+    "category": "Other",
+    "active": false,
+    "notes": "Inactive rules are ignored by rule-check"
+  }
+]

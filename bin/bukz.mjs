@@ -5,11 +5,13 @@ const COMMANDS = {
   check: () => import('../src/commands/check.mjs'),
   budgets: () => import('../src/commands/budgets.mjs'),
   pull: () => import('../src/commands/pull.mjs'),
+  'sync-config': () => import('../src/commands/sync-config.mjs'),
   categories: () => import('../src/commands/categories.mjs'),
   'spot-check': () => import('../src/commands/spot-check.mjs'),
   anomalies: () => import('../src/commands/anomalies.mjs'),
   mismatches: () => import('../src/commands/mismatches.mjs'),
   rules: () => import('../src/commands/rules.mjs'),
+  'rule-check': () => import('../src/commands/rule-check.mjs'),
   uncategorized: () => import('../src/commands/uncategorized.mjs'),
   match: () => import('../src/commands/match.mjs'),
   recategorize: () => import('../src/commands/recategorize.mjs'),
@@ -31,6 +33,13 @@ Setup & data
   budgets         List YNAB budgets / Xero organisations
   pull            Fetch transactions + categories into data/transactions.json
                   Incremental by default (deltas only); --full re-fetches everything
+  sync-config     Hydrate config/bills.json + config/rules.json from hub Sheet
+                    (atomic write). Prefer CLI flags (no .env edit):
+                      --service-account FILE --spreadsheet-id ID
+                      [--bills-tab Bills] [--rules-tab Rules]
+                    Demo/CI: --from fixtures/sheets-hub.json
+                    Then outlook/rule-check keep using local config/*.json
+                    Column layouts: docs/sheets-config.md
   categories      List categories from the local cache
 
 Analysis (read from the cache; all output is JSON)
@@ -44,6 +53,10 @@ Analysis (read from the cache; all output is JSON)
   rules           Payee→category rule candidates from history, plus the
                   uncategorized rows each rule would fix
                     --min-support N (default 3)  --min-confidence 0..1 (default 0.8)
+  rule-check      Check transactions against curated config/rules.json
+                    (exact payee match; leads only — flag, don't verdict)
+                    --rules FILE (demo: fixtures/rules.json)
+                    --violations-only  omit correct matches from output
   uncategorized   Transactions with no category, and unapproved ones
   match           Find transactions matching a receipt
                     --amount 42.50 --date YYYY-MM-DD [--window DAYS] [--payee TEXT]

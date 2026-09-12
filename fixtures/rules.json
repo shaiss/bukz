@@ -1,0 +1,37 @@
+[
+  {
+    "payee": "Netflix",
+    "category": "Subscriptions",
+    "active": true,
+    "notes": "PLANT: June row is Groceries — must violate"
+  },
+  {
+    "payee": "Staples",
+    "category": "Office Supplies",
+    "active": true,
+    "notes": "PLANT: one uncategorized row — must land in uncategorized leads"
+  },
+  {
+    "payee": "Amazon Web Services",
+    "category": "Software",
+    "active": true,
+    "notes": "Healthy control — all rows should match"
+  },
+  {
+    "payee": "Oakwood Property Mgmt",
+    "category": "Rent",
+    "active": true
+  },
+  {
+    "payee": "Ghost Payee Never Seen",
+    "category": "Other",
+    "active": true,
+    "notes": "No matching transactions — must not invent findings"
+  },
+  {
+    "payee": "Starbucks",
+    "category": "Groceries",
+    "active": false,
+    "notes": "Inactive on purpose — must not flag Dining Out Starbucks as violations"
+  }
+]

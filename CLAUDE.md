@@ -24,7 +24,8 @@ node bin/bukz.mjs help            # full CLI reference
 node bin/bukz.mjs check           # config doctor (safe: booleans only)
 node bin/bukz.mjs pull            # fetch books → data/transactions.json (incremental by default)
 node bin/bukz.mjs pull --full     # re-fetch everything (ignore the cache cursor)
-node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, uncategorized, match, categories, budgets)
+node bin/bukz.mjs sync-config     # hub Sheet → config/bills.json + rules.json (demo: --from fixtures/sheets-hub.json)
+node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, rule-check, uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
 node bin/bukz.mjs assign          # MUTATING (YNAB budget): assign dollars; dry-run unless --yes
@@ -36,7 +37,7 @@ node fixtures/generate.mjs         # regenerate demo fixtures
 
 There is no build/lint step — plain ESM (`.mjs`), Node ≥ 18, zero runtime dependencies (no `npm install` needed; keep it that way).
 
-Every analysis command accepts `--in FILE` — `--in fixtures/sample.json` is demo mode and works without API keys. `--since YYYY-MM-DD` and `--until YYYY-MM-DD` filter (inclusive bounds); `--provider ynab|xero` selects the source.
+Every analysis command accepts `--in FILE` — `--in fixtures/sample.json` is demo mode and works without API keys. `--since YYYY-MM-DD` and `--until YYYY-MM-DD` filter (inclusive bounds); `--provider ynab|xero` selects the source. Curated rules: `rule-check --rules fixtures/rules.json`. Sheets sync demo: `sync-config --from fixtures/sheets-hub.json`.
 
 ## Architecture
 
@@ -45,13 +46,13 @@ bin/bukz.mjs           dispatcher → src/commands/<name>.mjs (thin wrappers)
 src/providers/         ynab.mjs, xero.mjs — normalize to the shared transaction
                        shape documented in providers/index.mjs
 src/analysis/          pure functions: stats.mjs (median/MAD/robustZ),
-                       anomalies.mjs, mismatches.mjs, rules.mjs, sample.mjs;
-                       reporting: money.mjs, period.mjs, pl.mjs, cashflow.mjs,
-                       variance.mjs, outlook.mjs
+                       anomalies.mjs, mismatches.mjs, rules.mjs,
+                       curated-rules.mjs, sample.mjs; reporting: money.mjs,
+                       period.mjs, pl.mjs, cashflow.mjs, variance.mjs, outlook.mjs
 src/data.mjs           cache I/O; data/transactions.json is the analysis input
-src/config.mjs         loader for config/ — gitignored curated registries
-                       (bills.json powers outlook; entities.json is the
-                       account→entity map for future entity-sliced reports)
+src/config.mjs         loader + atomic writer for config/ — gitignored curated
+                       registries (bills.json, rules.json, entities.json)
+src/sheets/            Google Sheets read-path (service-account JWT + parsers)
 src/server.mjs         read-only localhost server behind `serve` (static SPA
                        from web/ + /api/data + /api/bills); web/ holds the
                        zero-dependency SPA, which imports the same analysis

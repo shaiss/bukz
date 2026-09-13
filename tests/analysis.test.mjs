@@ -7,6 +7,7 @@ import { findAnomalies } from '../src/analysis/anomalies.mjs';
 import { findMismatches } from '../src/analysis/mismatches.mjs';
 import { deriveRules } from '../src/analysis/rules.mjs';
 import { sampleForSpotCheck } from '../src/analysis/sample.mjs';
+import { isUncategorized } from '../src/analysis/categorization.mjs';
 
 // The fixture's planted issues (see fixtures/generate.mjs) are the spec here.
 const fixture = JSON.parse(
@@ -34,6 +35,18 @@ test('stats: robustZ handles zero-spread history without exploding', () => {
 test('stats: daysBetween is timezone-safe whole days', () => {
   assert.equal(daysBetween('2026-03-21', '2026-07-05'), 106);
   assert.equal(daysBetween('2026-07-02', '2026-07-03'), 1);
+});
+
+test('isUncategorized: null/empty name, named Uncategorized, or null/empty id', () => {
+  assert.equal(isUncategorized({ category: null, categoryId: null }), true);
+  assert.equal(isUncategorized({ category: '', categoryId: 'x' }), true);
+  assert.equal(isUncategorized({ category: 'Uncategorized', categoryId: null }), true);
+  assert.equal(isUncategorized({ category: 'Uncategorized', categoryId: '' }), true);
+  assert.equal(isUncategorized({ category: 'Groceries', categoryId: null }), true);
+  assert.equal(isUncategorized({ category: 'Groceries', categoryId: '' }), true);
+  assert.equal(isUncategorized({ category: 'Groceries', categoryId: 'c-groc' }), false);
+  // Named Uncategorized is inbox even if a stale id were present
+  assert.equal(isUncategorized({ category: 'Uncategorized', categoryId: 'stale' }), true);
 });
 
 test('anomalies: reference date is newest transaction, not wall clock', () => {
@@ -85,7 +98,7 @@ test('anomalies: flags the new large payee', () => {
 });
 
 test('anomalies: counts triage work', () => {
-  // 2 from PLANT 7 + 1 uncategorized Staples row from PLANT 8
+  // 2 from PLANT 7 (null category) + 1 named Uncategorized Staples from PLANT 8
   assert.equal(anomalies.uncategorizedCount, 3);
   assert.equal(anomalies.unapprovedCount, 1);
 });
@@ -108,6 +121,8 @@ test('rules: proposes Staples→Office Supplies with its uncategorized row as wo
   assert.equal(staples.support, 4);
   assert.equal(staples.confidence, 1);
   assert.equal(staples.uncategorized.length, 1);
+  assert.equal(staples.uncategorized[0].category, 'Uncategorized');
+  assert.equal(staples.uncategorized[0].categoryId, null);
   assert.equal(staples.uncategorized[0].account, 'Demo Checking');
 });
 

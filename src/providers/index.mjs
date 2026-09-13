@@ -7,8 +7,8 @@ import * as xero from './xero.mjs';
 //   date: 'YYYY-MM-DD',
 //   amount: number,         // currency units; NEGATIVE = outflow, POSITIVE = inflow
 //   payee: string|null,
-//   category: string|null,  // null = uncategorized
-//   categoryId: string|null,
+//   category: string|null,  // null/empty/"Uncategorized" = uncategorized (see isUncategorized)
+//   categoryId: string|null, // null/empty also means uncategorized (YNAB inbox)
 //   account: string|null,
 //   memo: string,
 //   status: 'cleared'|'uncleared'|'reconciled',

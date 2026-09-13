@@ -9,7 +9,7 @@
     "payee": "Staples",
     "category": "Office Supplies",
     "active": true,
-    "notes": "PLANT: one uncategorized row — must land in uncategorized leads"
+    "notes": "PLANT: one named Uncategorized / null categoryId row — must land in uncategorized leads"
   },
   {
     "payee": "Amazon Web Services",

@@ -1,4 +1,5 @@
 import { groupBy, median } from './stats.mjs';
+import { isUncategorized } from './categorization.mjs';
 
 // Payee→category rule candidates: a payee with enough categorized history that
 // lands in one category most of the time proposes the rule itself. Where
@@ -16,8 +17,8 @@ export function deriveRules(transactions, opts = {}) {
   let belowMinSupport = 0;
 
   for (const [payee, rows] of groupBy(t, (x) => x.payee)) {
-    const categorized = rows.filter((x) => x.category);
-    const uncategorized = rows.filter((x) => !x.category);
+    const categorized = rows.filter((x) => !isUncategorized(x));
+    const uncategorized = rows.filter((x) => isUncategorized(x));
     if (categorized.length < minSupport) {
       belowMinSupport++;
       continue;

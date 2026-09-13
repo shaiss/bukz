@@ -1279,7 +1279,7 @@
       "date": "2026-06-18",
       "amount": -76.4,
       "payee": "Staples",
-      "category": null,
+      "category": "Uncategorized",
       "categoryId": null,
       "account": "Demo Checking",
       "memo": "",

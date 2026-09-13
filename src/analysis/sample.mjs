@@ -1,4 +1,5 @@
 import { groupBy } from './stats.mjs';
+import { isUncategorized } from './categorization.mjs';
 
 // Stratified sample for the category spot check: for each category, always
 // include its largest transaction (highest audit value), then fill with a
@@ -6,7 +7,7 @@ import { groupBy } from './stats.mjs';
 // produce the same sample — reviews are reproducible and re-runs comparable.
 export function sampleForSpotCheck(transactions, opts = {}) {
   const { perCategory = 5, seed = 42 } = opts;
-  const t = transactions.filter((x) => !x.transfer && x.category);
+  const t = transactions.filter((x) => !x.transfer && !isUncategorized(x));
   const rand = mulberry32(seed);
   const result = [];
   const byCategory = [...groupBy(t, (x) => x.category).entries()]

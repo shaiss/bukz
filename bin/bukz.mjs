@@ -87,6 +87,9 @@ Visualization (read-only, localhost only)
 Feed (read-only; for famdash — not the dashboard)
   feed-serve      GET /api/feed/recent  (Bearer BUKZ_API_KEY; 401 if missing
                   or wrong). Last cache only — never calls YNAB/Xero.
+                  No dollar figures in v0. ?amounts=1 is the only future
+                  unlock and does not add figures yet. fundedPct is never
+                  emitted. One cash_outlook; light is in the summary only.
                     --port N (default 7801, or BUKZ_FEED_PORT)
                     --host HOST (default 127.0.0.1, or BUKZ_FEED_HOST)
                     --in FILE  --bills FILE

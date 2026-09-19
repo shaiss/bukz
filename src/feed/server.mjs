@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 
-import { buildFeed, clampFeedLimit } from './feed.mjs';
+import { amountsUnlocked, buildFeed, clampFeedLimit } from './feed.mjs';
 
 // Read-only famdash feed. Separate from the dashboard server on purpose:
 // `serve` is unauthenticated and must stay on 127.0.0.1, while this process
@@ -66,6 +66,7 @@ async function handle(req, res, opts) {
     bills,
     now: opts.now(),
     limit: clampFeedLimit(url.searchParams.get('limit')),
+    amounts: amountsUnlocked(url.searchParams.get('amounts')),
   });
   sendJson(res, 200, body);
 }

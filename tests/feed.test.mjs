@@ -5,10 +5,12 @@ import { resolve } from 'node:path';
 
 import { isUncategorized } from '../src/analysis/categorization.mjs';
 import {
+  amountsUnlocked,
   buildFeed,
   clampFeedLimit,
   fundingBand,
   leakHits,
+  liabilityInCopy,
   sealFeed,
   sensitiveStrings,
 } from '../src/feed/feed.mjs';
@@ -116,9 +118,11 @@ test('buildFeed: synthetic cache produces all five kinds without deny-list leaks
   for (const kind of KINDS) assert.ok(kinds.has(kind), kind);
 
   const cash = items.find((item) => item.meta.kind === 'cash_outlook');
-  assert.equal(cash.meta.status, 'red');
-  assert.equal(cash.meta.windowDays, '14');
-  assert.equal(cash.meta.asOf, '2026-09-10');
+  assert.equal(items.filter((item) => item.meta.kind === 'cash_outlook').length, 1);
+  assert.equal(cash.title, 'Cash outlook');
+  assert.match(cash.summary, /Overall light is red/);
+  assert.equal(cash.meta.liabilityWatch, 'true');
+  assert.equal(cash.meta.status, undefined);
   assert.equal(cash.status, 'ok');
   assert.equal(cash.meta.cacheAge, '0');
 
@@ -128,6 +132,7 @@ test('buildFeed: synthetic cache produces all five kinds without deny-list leaks
 
   const billsItem = items.find((item) => item.meta.kind === 'bill_coverage');
   assert.equal(billsItem.meta.coverage, 'short');
+  assert.equal(billsItem.meta.windowDays, '14');
 
   const funding = items.find((item) => item.meta.kind === 'budget_funding');
   assert.equal(funding.meta.band, 'partial');
@@ -152,12 +157,16 @@ test('buildFeed: fixture cache matches outlook, inbox, and funding enums', () =>
   const funding = items.find((item) => item.meta.kind === 'budget_funding');
   const flags = items.filter((item) => item.meta.kind === 'variance_flag');
 
-  assert.equal(cash.meta.status, 'red');
-  assert.equal(cash.meta.asOf, '2026-07-05');
+  assert.equal(cash.title, 'Cash outlook');
+  assert.match(cash.summary, /Overall light is red/);
+  assert.equal(cash.meta.liabilityWatch, 'true');
+  assert.equal(cash.meta.status, undefined);
   assert.equal(inbox.meta.count, '1');
   assert.equal(inbox.meta.month, '2026-07');
   assert.equal(coverage.meta.coverage, 'short');
+  assert.equal(coverage.meta.windowDays, '14');
   assert.equal(funding.meta.band, 'partial');
+  assert.equal(funding.meta.fundedPct, undefined);
   assert.ok(flags.length >= 1);
   for (const flag of flags) {
     assert.ok(flag.meta.direction === 'over' || flag.meta.direction === 'under');
@@ -170,7 +179,8 @@ test('buildFeed: cache older than 6h is stub but still the last cache', () => {
   const now = new Date('2026-07-05T19:00:00.000Z');
   const { items } = buildFeed({ cache: FIXTURE, bills: BILLS, now, limit: 10 });
   assert.ok(items.every((item) => item.status === 'stub'));
-  assert.equal(items[0].meta.status, 'red');
+  assert.match(items[0].summary, /Overall light is red/);
+  assert.equal(items[0].meta.liabilityWatch, 'true');
   assert.equal(items[0].meta.cacheAge, String(7 * 60 * 60));
 });
 
@@ -187,8 +197,9 @@ test('buildFeed: no cache returns five placeholder kinds', () => {
   assert.equal(items.length, 5);
   assert.deepEqual(items.map((item) => item.meta.kind), KINDS);
   assert.ok(items.every((item) => item.status === 'stub'));
-  assert.equal(items[0].meta.status, 'yellow');
-  assert.equal(leakHits(items).length, 0);
+  assert.match(items[0].summary, /Overall light is yellow/);
+  assert.equal(items[0].meta.liabilityWatch, 'false');
+  assertProductLock(items);
 });
 
 test('buildFeed: clear books map to green, covered, and funded', () => {
@@ -216,16 +227,60 @@ test('buildFeed: clear books map to green, covered, and funded', () => {
   };
   const now = new Date('2026-09-19T12:00:00.000Z');
   const { items } = buildFeed({ cache, bills: [], now, limit: 50 });
-  assert.equal(items.find((item) => item.meta.kind === 'cash_outlook').meta.status, 'green');
+  const cash = items.find((item) => item.meta.kind === 'cash_outlook');
+  assert.match(cash.summary, /Overall light is green/);
+  assert.equal(cash.meta.liabilityWatch, 'false');
   assert.equal(items.find((item) => item.meta.kind === 'bill_coverage').meta.coverage, 'covered');
+  assert.equal(items.find((item) => item.meta.kind === 'bill_coverage').meta.windowDays, '14');
   assert.equal(items.find((item) => item.meta.kind === 'budget_funding').meta.band, 'funded');
   assert.equal(items.find((item) => item.meta.kind === 'variance_flag').meta.direction, 'under');
   assert.equal(JSON.stringify(items).includes('5000'), false);
   assertClean(items, cache, []);
 
   const blind = buildFeed({ cache: { ...cache, accounts: [] }, bills: [], now, limit: 50 });
-  assert.equal(blind.items.find((item) => item.meta.kind === 'cash_outlook').meta.status, 'yellow');
+  const blindCash = blind.items.find((item) => item.meta.kind === 'cash_outlook');
+  assert.match(blindCash.summary, /Overall light is yellow/);
+  assert.equal(blindCash.meta.liabilityWatch, 'false');
   assert.equal(blind.items.find((item) => item.meta.kind === 'bill_coverage').meta.coverage, 'watch');
+});
+
+test('buildFeed: amounts=1 does not unlock fundedPct or dollar figures in v0 kinds', () => {
+  assert.equal(amountsUnlocked(undefined), false);
+  assert.equal(amountsUnlocked('0'), false);
+  assert.equal(amountsUnlocked('1'), true);
+  assert.equal(amountsUnlocked(1), true);
+  for (const amounts of [false, true, '1']) {
+    const body = buildFeed({ cache: FIXTURE, bills: BILLS, now: FRESH, limit: 50, amounts });
+    assert.equal(JSON.stringify(body).includes('$'), false);
+    assert.equal(hasKey(body, 'fundedPct'), false);
+    assertProductLock(body.items);
+  }
+});
+
+test('sealFeed: liability wording in the title is dropped, and the flag stays in meta', () => {
+  const now = new Date('2026-09-01T00:00:00.000Z');
+  const sealed = sealFeed(
+    {
+      items: [{
+        id: 'bukz:cash_outlook:2026-09-01',
+        source: 'bukz',
+        title: 'Cash outlook',
+        summary: 'A liability is due.',
+        occurredAt: now.toISOString(),
+        status: 'ok',
+        meta: { kind: 'cash_outlook', liabilityWatch: 'true', fundedPct: '35' },
+      }],
+      fetchedAt: now.toISOString(),
+    },
+    [],
+    now
+  );
+  assert.equal(liabilityInCopy(sealed.items), false);
+  assert.equal(hasKey(sealed, 'fundedPct'), false);
+  assert.equal(JSON.stringify(sealed).includes('$'), false);
+  const cash = sealed.items.find((item) => item.meta.kind === 'cash_outlook');
+  assert.equal(cash.meta.liabilityWatch, 'false');
+  assert.equal(`${cash.title} ${cash.summary}`.toLowerCase().includes('liability'), false);
 });
 
 test('buildFeed: limit keeps the cash outlook first', () => {
@@ -301,6 +356,15 @@ test('feed http: missing or wrong bearer is 401; good bearer is 200', async (t) 
   const oneBody = await one.json();
   assert.equal(oneBody.items.length, 1);
 
+  const unlocked = await fetch(base + '/api/feed/recent?amounts=1', {
+    headers: { Authorization: 'Bearer test-feed-key' },
+  });
+  const unlockedBody = await unlocked.json();
+  assert.equal(unlocked.status, 200);
+  assert.equal(JSON.stringify(unlockedBody).includes('$'), false);
+  assert.equal(JSON.stringify(unlockedBody).includes('fundedPct'), false);
+  assertProductLock(unlockedBody.items);
+
   const post = await fetch(base + '/api/feed/recent', { method: 'POST' });
   assert.equal(post.status, 405);
   const other = await fetch(base + '/api/data', {
@@ -370,12 +434,39 @@ test('dashboard serve does not expose the feed', async (t) => {
   assert.notEqual(res.status, 200);
 });
 
+function assertProductLock(items) {
+  const blob = JSON.stringify(items);
+  assert.equal(blob.includes('$'), false);
+  assert.equal(hasKey(items, 'fundedPct'), false);
+  assert.equal(liabilityInCopy(items), false);
+  const cash = items.filter((item) => item.meta?.kind === 'cash_outlook');
+  if (items.length) assert.ok(cash.length <= 1);
+  for (const item of items) {
+    const copy = `${item.title ?? ''}\n${item.summary ?? ''}`;
+    assert.equal(copy.toLowerCase().includes('liability'), false);
+    if (Object.prototype.hasOwnProperty.call(item.meta ?? {}, 'liabilityWatch')) {
+      assert.equal(item.meta.kind, 'cash_outlook');
+      assert.ok(item.meta.liabilityWatch === 'true' || item.meta.liabilityWatch === 'false');
+    }
+    const { meta, ...rest } = item;
+    assert.equal(JSON.stringify(rest).toLowerCase().includes('liability'), false);
+    assert.equal(meta.fundedPct, undefined);
+  }
+}
+
+function hasKey(value, key) {
+  if (!value || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.some((entry) => hasKey(entry, key));
+  if (Object.prototype.hasOwnProperty.call(value, key)) return true;
+  return Object.values(value).some((entry) => hasKey(entry, key));
+}
+
 function assertClean(items, cache, bills) {
   const blob = JSON.stringify(items);
   assert.equal(blob.includes('$'), false);
   assert.doesNotMatch(blob, /(?<!\d)\d+\.\d{2}(?!\d)/);
   assert.doesNotMatch(blob, /ready to assign/i);
-  assert.doesNotMatch(blob, /\b(liability|liable|debt|overdraft|collections|shortfall)\b/i);
+  assertProductLock(items);
   const hits = leakHits(items, sensitiveStrings(cache, bills));
   assert.deepEqual(hits, []);
   for (const item of items) {

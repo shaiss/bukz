@@ -29,17 +29,23 @@ Authorization: Bearer <BUKZ_API_KEY>
 | `status` | `ok` \| `stub` \| `error` |
 | `meta` | string values only |
 
-`status` on the item is freshness. `meta.status` on a cash item is the traffic light (`green` \| `yellow` \| `red`). They are different fields.
+`status` on the item is freshness (`ok` / `stub` / `error`). The cash traffic light is **not** a meta field. It is one sentence in `summary` (`Overall light is green|yellow|red`). `meta.liabilityWatch` is `true` or `false` for engineering only, and only on that item. The words "liability", "debt", "owe", and similar never appear in `title` or `summary`.
+
+There is one `cash_outlook` item. Checkpoint and outlook are not split into two feed rows.
+
+`?amounts=1` is the only switch that may ever add rounded aggregates. These v0 kinds have no amount fields, so the flag does not add figures. Any other value (including omitting it) is scrubbed of `$`. `fundedPct` is never a key; it is mapped to `meta.band` inside the process.
 
 ## Kinds (`meta.kind`)
 
-Locked enums. The feed does not invent others.
+Locked set. The feed does not invent others.
 
-1. `cash_outlook` — `meta.status` `green`\|`yellow`\|`red`, `meta.windowDays`, `meta.asOf`. Worst account light from `outlook` (14-day window).
-2. `uncategorized` — `meta.count`, `meta.month` (`YYYY-MM`, newest transaction's month). Uses `isUncategorized`: null or blank category, the label `Uncategorized`, or a null/blank `categoryId`. Transfers are excluded.
-3. `bill_coverage` — `meta.coverage` `covered`\|`watch`\|`short`. Red outlook → `short`; yellow, an unmatched bill, or a non-autopay bill in the manual window → `watch`; otherwise `covered`. No amounts, no account names.
-4. `budget_funding` — `meta.band` `hold`\|`partial`\|`funded`, from `monthAhead` funded percent (`0` or unknown → `hold`, `1–99` → `partial`, `100+` → `funded`).
-5. `variance_flag` — category **group** label and `meta.direction` `over`\|`under`. No category names and no amounts. One item per group that is off its plan, over first.
+1. `cash_outlook` — summary carries the overall light. `meta.liabilityWatch` is `true` only when that light is red. No account names.
+2. `uncategorized` — `meta.count` and `meta.month` (`YYYY-MM`) only. `isUncategorized`: null or blank category, the label `Uncategorized`, or a null/blank `categoryId`. Transfers are excluded.
+3. `bill_coverage` — `meta.coverage` `covered`|`watch`|`short` and `meta.windowDays`. No amounts, no account names.
+4. `budget_funding` — `meta.band` `hold`|`partial`|`funded` only. The percent is mapped internally and is not emitted.
+5. `variance_flag` — category **group** label and `meta.direction` `over`|`under`. No amounts. One item per group that is off its plan, over first.
+
+`meta.cacheAge` (whole seconds) is freshness, not a kind field. It is present when the cache has a `pulledAt`.
 
 ## Freshness
 
@@ -51,7 +57,7 @@ The feed serves the last successful cache. It does not block on a live pull.
 
 ## Deny list
 
-Never put these in titles, summaries, meta, errors, or logs: payees, merchants, account names or ids, last4, institutions, dollar amounts, balances, Ready to Assign, projections, bill totals, person names, emails, phones, addresses, receipt text, tokens, `.env`, raw transaction ids.
+Never put these in titles, summaries, meta, errors, or logs: payees, merchants, account names or ids, last4, institutions, dollar amounts (including rounded aggregates, unless a future schema is behind `amounts=1`), balances, Ready to Assign, `fundedPct`, projections, bill totals, budget ids, person names, emails, phones, addresses, receipt text, tokens, `.env`, raw transaction ids.
 
 `buildFeed` drops a payload that trips those checks and returns generic `error` placeholders instead. It does not echo what matched.
 

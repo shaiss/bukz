@@ -21,11 +21,7 @@ export const FEED_MAX_LIMIT = 50;
 export const FEED_WINDOW_DAYS = 14;
 export const FEED_FRESH_MS = 6 * 60 * 60 * 1000;
 
-const CASH_TITLE = {
-  green: 'Cash outlook is clear',
-  yellow: 'Cash outlook needs a look',
-  red: 'Cash outlook is tight',
-};
+const CASH_TITLE = 'Cash outlook';
 
 const BILL_TITLE = {
   covered: 'Scheduled bills look covered',
@@ -41,6 +37,19 @@ const BAND_TITLE = {
 
 const LIABILITY =
   /\b(liabilit(?:y|ies)|liable|debts?|owe[ds]?|overdrafts?|collections|shortfalls?|bankrupt(?:cy)?)\b/i;
+
+/** True only for the explicit `amounts=1` unlock. Anything else stays amount-free. */
+export function amountsUnlocked(raw) {
+  return raw === 1 || raw === '1';
+}
+
+/** Liability wording in title/summary. `meta.liabilityWatch` is not copy. */
+export function liabilityInCopy(items) {
+  for (const item of items ?? []) {
+    if (LIABILITY.test(`${item?.title ?? ''}\n${item?.summary ?? ''}`)) return true;
+  }
+  return false;
+}
 
 /** Clamp `limit` to 1–50; default 10. Non-numeric → default. Matches FamPoll. */
 export function clampFeedLimit(raw) {
@@ -79,8 +88,10 @@ export function buildFeed({
   now = new Date(),
   limit = FEED_DEFAULT_LIMIT,
   windowDays = FEED_WINDOW_DAYS,
+  amounts = false,
 } = {}) {
   const cap = clampFeedLimit(limit);
+  const allowAmounts = amounts === true || amountsUnlocked(amounts);
   const fetchedAt = now.toISOString();
   const usable = cache && Array.isArray(cache.transactions);
   const fresh = cacheFreshness(usable ? cache.pulledAt : null, now);
@@ -98,23 +109,26 @@ export function buildFeed({
   const sealed = sealFeed(
     { items, fetchedAt },
     sensitiveStrings(usable ? cache : null, bills),
-    now
+    now,
+    { amounts: allowAmounts }
   );
   return { items: sealed.items.slice(0, cap), fetchedAt };
 }
 
 /** Replace the payload when it would leak deny-list material. Never echoes the hit. */
-export function sealFeed(payload, forbidden, now = new Date()) {
-  const hits = leakHits(payload.items, forbidden);
-  if (!hits.length && !liabilityHits(payload.items)) return payload;
+export function sealFeed(payload, forbidden, now = new Date(), { amounts = false } = {}) {
+  const hits = leakHits(payload.items, forbidden, { amounts });
+  if (!hits.length && !liabilityInCopy(payload.items)) return payload;
   return { ...payload, items: placeholderItems(now, 'error') };
 }
 
-export function leakHits(value, forbidden = []) {
+export function leakHits(value, forbidden = [], { amounts = false } = {}) {
   const blob = typeof value === 'string' ? value : JSON.stringify(value ?? null);
   const hits = [];
-  if (blob.includes('$')) hits.push('$');
-  if (/(?<!\d)\d+\.\d{2}(?!\d)/.test(blob)) hits.push('decimal-amount');
+  // Dollar figures stay off the wire unless `amounts=1`. fundedPct never ships.
+  if (!amounts && blob.includes('$')) hits.push('$');
+  if (!amounts && /(?<!\d)\d+\.\d{2}(?!\d)/.test(blob)) hits.push('decimal-amount');
+  if (hasKey(value, 'fundedPct')) hits.push('fundedPct');
   if (/ready to assign|\bRTA\b/i.test(blob)) hits.push('rta');
   if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(blob)) hits.push('email');
   if (/\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/.test(blob)) hits.push('phone');
@@ -174,9 +188,11 @@ export function sensitiveStrings(cache, bills) {
   return [...out];
 }
 
-function liabilityHits(items) {
-  const blob = JSON.stringify(items ?? []);
-  return LIABILITY.test(blob);
+function hasKey(value, key) {
+  if (!value || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.some((entry) => hasKey(entry, key));
+  if (Object.prototype.hasOwnProperty.call(value, key)) return true;
+  return Object.values(value).some((entry) => hasKey(entry, key));
 }
 
 function itemsFromCache({ cache, bills, now, status, fresh, windowDays }) {
@@ -201,15 +217,14 @@ function cashItem({ cache, bills, windowDays, ref, occurredAt, status, age }) {
   const light = cashLight(cache, bills, windowDays);
   return feedItem({
     id: `bukz:cash_outlook:${ref}`,
-    title: CASH_TITLE[light],
-    summary: 'Traffic light for the look-ahead window.',
+    title: CASH_TITLE,
+    summary: `Overall light is ${light}.`,
     occurredAt,
     status,
     meta: {
       kind: 'cash_outlook',
-      status: light,
-      windowDays: String(windowDays),
-      asOf: ref,
+      // Engineering flag only. Copy must not say "liability".
+      liabilityWatch: light === 'red' ? 'true' : 'false',
       cacheAge: age,
     },
   });
@@ -242,7 +257,7 @@ function billItem({ cache, bills, windowDays, ref, occurredAt, status, age }) {
     summary: 'Scheduled-bill coverage for the window.',
     occurredAt,
     status,
-    meta: { kind: 'bill_coverage', coverage, cacheAge: age },
+    meta: { kind: 'bill_coverage', coverage, windowDays: String(windowDays), cacheAge: age },
   });
 }
 
@@ -377,11 +392,11 @@ function placeholderItems(now, status) {
   return [
     feedItem({
       id: 'bukz:cash_outlook:stub',
-      title: 'Cash outlook is not available yet',
-      summary: 'No fresh cache to read.',
+      title: CASH_TITLE,
+      summary: 'Overall light is yellow.',
       occurredAt,
       status,
-      meta: { kind: 'cash_outlook', status: 'yellow', windowDays: String(FEED_WINDOW_DAYS), asOf: day },
+      meta: { kind: 'cash_outlook', liabilityWatch: 'false' },
     }),
     feedItem({
       id: `bukz:uncategorized:${month}`,
@@ -397,7 +412,7 @@ function placeholderItems(now, status) {
       summary: 'No fresh cache to read.',
       occurredAt,
       status,
-      meta: { kind: 'bill_coverage', coverage: 'watch' },
+      meta: { kind: 'bill_coverage', coverage: 'watch', windowDays: String(FEED_WINDOW_DAYS) },
     }),
     feedItem({
       id: 'bukz:budget_funding:stub',

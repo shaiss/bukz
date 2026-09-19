@@ -28,6 +28,7 @@ node bin/bukz.mjs sync-config     # hub Sheet → config/bills.json + rules.json
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, rule-check, uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
+node bin/bukz.mjs feed-serve      # famdash GET /api/feed/recent (Bearer BUKZ_API_KEY; see docs/feed.md)
 node bin/bukz.mjs assign          # MUTATING (YNAB budget): assign dollars; dry-run unless --yes
 
 node --test                        # run all tests
@@ -57,6 +58,9 @@ src/server.mjs         read-only localhost server behind `serve` (static SPA
                        from web/ + /api/data + /api/bills); web/ holds the
                        zero-dependency SPA, which imports the same analysis
                        modules the CLI runs — one source of truth for numbers
+src/feed/              pure mappers (feed.mjs) + GET /api/feed/recent
+                       (server.mjs) for famdash. Bearer BUKZ_API_KEY, last
+                       cache only, default bind 127.0.0.1. Not the dashboard.
 .claude/skills/        the AI team: bukz-setup, spot-check, anomalies,
                        mismatches, rules, triage, receipts, close-review,
                        weekly-checkpoint, budget

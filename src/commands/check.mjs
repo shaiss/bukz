@@ -37,6 +37,7 @@ export async function run(argv) {
       GOOGLE_SHEETS_SPREADSHEET_ID: Boolean(process.env.GOOGLE_SHEETS_SPREADSHEET_ID),
       GOOGLE_SHEETS_BILLS_TAB: Boolean(process.env.GOOGLE_SHEETS_BILLS_TAB),
       GOOGLE_SHEETS_RULES_TAB: Boolean(process.env.GOOGLE_SHEETS_RULES_TAB),
+      BUKZ_API_KEY: Boolean(process.env.BUKZ_API_KEY),
     },
     api,
     sheets,

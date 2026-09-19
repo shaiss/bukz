@@ -56,6 +56,14 @@ node bin/bukz.mjs serve --in fixtures/sample.json --bills fixtures/bills.json   
 
 A read-only visualization layer over the same cache: the weekly checkpoint with per-account traffic lights, P&L, cashflow, and budget variance — every table drills down to the transactions behind it. Zero dependencies and no build step; the browser imports the exact analysis modules the CLI runs, so a number on screen and the same number in a report always agree. The server binds 127.0.0.1 only.
 
+## A feed for famdash
+
+```sh
+node bin/bukz.mjs feed-serve --in fixtures/sample.json --bills fixtures/bills.json
+```
+
+`GET /api/feed/recent` (default `127.0.0.1:7801`) returns five signal kinds — cash outlook, uncategorized count, bill coverage, month-ahead funding band, category-group variance — with `Authorization: Bearer $BUKZ_API_KEY`. It reads the last cache only. No dollar amounts, payees, or account names. This repo is public: Cipher must CLEAR before any non-loopback URL. See `docs/feed.md`.
+
 ## Your keys never meet the model
 
 - Keys live in `.env`, which is **gitignored** and **permission-denied** to Claude in `.claude/settings.json`.
@@ -75,6 +83,7 @@ Honest caveat: no local setup can make secrets provably invisible to a tool that
 - Xero invoices/bills (ACCPAY/ACCREC), QuickBooks provider
 - Fuzzy payee matching for curated rules (`SQ *SHOP` vs `SQ *SHOP #123`)
 - Packaging as an installable Claude Code plugin
+- ~~Famdash read-only feed~~ — shipped: `feed-serve` (`docs/feed.md`). Public URL still needs Cipher CLEAR.
 
 ## License
 

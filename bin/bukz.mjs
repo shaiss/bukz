@@ -22,6 +22,7 @@ const COMMANDS = {
   variance: () => import('../src/commands/variance.mjs'),
   outlook: () => import('../src/commands/outlook.mjs'),
   serve: () => import('../src/commands/serve.mjs'),
+  'feed-serve': () => import('../src/commands/feed-serve.mjs'),
 };
 
 const USAGE = `bukz — the AI bookkeeper's toolbelt
@@ -82,6 +83,18 @@ Visualization (read-only, localhost only)
                     --port N (default 7800)  --in FILE  --bills FILE
                     demo: node bin/bukz.mjs serve --in fixtures/sample.json
                             --bills fixtures/bills.json
+
+Feed (read-only; for famdash — not the dashboard)
+  feed-serve      GET /api/feed/recent  (Bearer BUKZ_API_KEY; 401 if missing
+                  or wrong). Last cache only — never calls YNAB/Xero.
+                    --port N (default 7801, or BUKZ_FEED_PORT)
+                    --host HOST (default 127.0.0.1, or BUKZ_FEED_HOST)
+                    --in FILE  --bills FILE
+                  Demo: set BUKZ_API_KEY in the environment (never in chat),
+                  then node bin/bukz.mjs feed-serve --in fixtures/sample.json
+                       --bills fixtures/bills.json
+                  A public URL needs Cipher CLEAR; this repo is public.
+                  Contract: docs/feed.md
 
 Write (mutating — YNAB only; DRY-RUN by default, --yes to apply)
   recategorize    Change one transaction's category

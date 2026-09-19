@@ -44,6 +44,9 @@ node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, rule-c
                                   #  uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
+node bin/bukz.mjs feed-serve      # famdash GET /api/feed/recent (Bearer BUKZ_API_KEY)
+                                  # default 127.0.0.1:7801; docs/feed.md
+                                  # public URL needs Cipher CLEAR (repo is public)
 node bin/bukz.mjs recategorize    # MUTATING (YNAB): --txn <id> --category "<name>"; dry-run unless --yes
 node bin/bukz.mjs assign          # MUTATING (YNAB budget): --month --category --amount | --copy-from; dry-run unless --yes
 
@@ -75,6 +78,9 @@ src/sheets/             Google Sheets read-path: service-account JWT auth,
 src/server.mjs          the read-only localhost server behind `serve`: static
                         SPA from web/, the analysis modules for browser import,
                         and /api/data + /api/bills (re-read per request)
+src/feed/               famdash feed. feed.mjs is pure (no I/O); server.mjs is
+                        GET /api/feed/recent only (bearer auth, last cache,
+                        no provider calls). Separate from `serve`.
 src/providers/          ynab.mjs, xero.mjs — normalize to the shared transaction
                         shape documented in providers/index.mjs
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
@@ -120,6 +126,14 @@ web/                    the dashboard SPA (index.html, app.js, views.mjs,
   browser-loadable.
 - `/api/data` and `/api/bills` re-read their files per request, so a fresh
   `pull` shows up on browser refresh — no server restart.
+
+### The famdash feed (`feed-serve`)
+
+Separate process from the dashboard so the unauthenticated SPA cannot be
+bound onto a public interface by accident. `GET /api/feed/recent` with
+`Authorization: Bearer $BUKZ_API_KEY`. Pure mappers live in `src/feed/feed.mjs`
+(no I/O). Default bind `127.0.0.1:7801`. Contract: `docs/feed.md`. This repo
+is public — Cipher must CLEAR before any non-loopback URL.
 
 ### Cross-file contracts to respect
 
@@ -214,11 +228,13 @@ skill has one.
 - CLI includes `check`, `budgets`, `pull`, `sync-config`, `categories`,
   `spot-check`, `anomalies`, `mismatches`, `rules`, `rule-check`,
   `uncategorized`, `match`, `recategorize`, `assign`, reporting (`pl`,
-  `cashflow`, `balances`, `variance`, `outlook`), and `serve`.
+  `cashflow`, `balances`, `variance`, `outlook`), `serve`, and `feed-serve`.
 - All ten skills written, including `weekly-checkpoint` and `budget`.
 - Demo mode (`--in fixtures/sample.json`) works end-to-end with no API keys
-  (`outlook` also takes `--bills fixtures/bills.json`; curated rules:
-  `rule-check --rules fixtures/rules.json`).
+ (`outlook` also takes `--bills fixtures/bills.json`; curated rules:
+ `rule-check --rules fixtures/rules.json`). `feed-serve` is the exception
+ that needs `BUKZ_API_KEY` (presence-only in `check`); demo data still
+ needs no YNAB/Xero keys. See `docs/feed.md`.
 - Input validation hardened: empty numeric args throw (not silently coerce to 0),
   and calendar dates are round-trip validated through the `Date` constructor so
   impossible dates like `2026-02-31` are rejected instead of rolling over.
@@ -235,3 +251,4 @@ skill has one.
   (`SQ *SHOP` vs `SQ *SHOP #123`) — derive-from-history (`rules`) and exact
   curated check (`rule-check` + Sheets sync) are shipped
 - Packaging as an installable Claude Code plugin
+- Famdash feed beyond the five v0 kinds (href, live pull) — v0 `feed-serve` is shipped; a public URL still needs Cipher CLEAR

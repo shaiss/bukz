@@ -224,11 +224,22 @@ test('CLI check reports Sheets env booleans without secrets', () => {
   const out = JSON.parse(res.stdout);
   assert.equal(typeof out.env.GOOGLE_SERVICE_ACCOUNT_FILE, 'boolean');
   assert.equal(typeof out.env.GOOGLE_SHEETS_SPREADSHEET_ID, 'boolean');
+  assert.equal(typeof out.env.BUKZ_API_KEY, 'boolean');
   assert.equal(out.sheets.configured, false);
   assert.equal(out.sheets.ok, false);
   // Never leak a path/token string into env block values that aren't the
   // YNAB_BUDGET_ID sentinel.
   assert.ok(!JSON.stringify(out.env).includes('BEGIN PRIVATE KEY'));
+});
+
+test('CLI check never prints BUKZ_API_KEY', () => {
+  const marker = 'test-feed-key-not-real';
+  const res = runBukz(['check'], { BUKZ_API_KEY: marker });
+  assert.equal(res.status, 0, res.stderr);
+  const out = JSON.parse(res.stdout);
+  assert.equal(out.env.BUKZ_API_KEY, true);
+  assert.equal(res.stdout.includes(marker), false);
+  assert.equal(res.stderr.includes(marker), false);
 });
 
 // ── PM acceptance: flags > .env; local config preferred; fixtures untouched ─

@@ -1,4 +1,5 @@
 import { groupBy, median, mad, robustZ, daysBetween } from './stats.mjs';
+import { isUncategorized } from './categorization.mjs';
 
 // Mechanical anomaly candidates. Everything here is a *lead*, not a verdict —
 // the skills layer (Claude) triages each flag with payee/context judgment.
@@ -16,7 +17,7 @@ export function findAnomalies(transactions, opts = {}) {
     newLargePayees: findNewLargePayees(t, referenceDate, newPayeeDays),
     missingRecurring: findMissingRecurring(t, referenceDate),
     largest: [...t].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)).slice(0, top),
-    uncategorizedCount: t.filter((x) => !x.category).length,
+    uncategorizedCount: t.filter(isUncategorized).length,
     unapprovedCount: t.filter((x) => x.approved === false).length,
   };
 }

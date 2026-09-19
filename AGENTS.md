@@ -46,7 +46,9 @@ node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance,
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
 node bin/bukz.mjs feed-serve      # famdash GET /api/feed/recent (Bearer BUKZ_API_KEY)
                                   # default 127.0.0.1:7801; docs/feed.md
-                                  # public URL needs Cipher CLEAR (repo is public)
+                                  # non-loopback hard-fails unless
+                                  # --allow-non-loopback / BUKZ_FEED_ALLOW_NON_LOOPBACK=1
+                                  # Cipher must CLEAR before that flag (repo is public)
 node bin/bukz.mjs recategorize    # MUTATING (YNAB): --txn <id> --category "<name>"; dry-run unless --yes
 node bin/bukz.mjs assign          # MUTATING (YNAB budget): --month --category --amount | --copy-from; dry-run unless --yes
 
@@ -132,8 +134,11 @@ web/                    the dashboard SPA (index.html, app.js, views.mjs,
 Separate process from the dashboard so the unauthenticated SPA cannot be
 bound onto a public interface by accident. `GET /api/feed/recent` with
 `Authorization: Bearer $BUKZ_API_KEY`. Pure mappers live in `src/feed/feed.mjs`
-(no I/O). Default bind `127.0.0.1:7801`. Contract: `docs/feed.md`. This repo
-is public — Cipher must CLEAR before any non-loopback URL.
+(no I/O). Default bind `127.0.0.1:7801`. Hosts other than `127.0.0.1`,
+`localhost`, and `::1` hard-fail unless `--allow-non-loopback` or
+`BUKZ_FEED_ALLOW_NON_LOOPBACK=1`. Contract: `docs/feed.md`. This repo is
+public — Cipher must CLEAR before that flag. Refusal errors do not include
+secrets.
 
 ### Cross-file contracts to respect
 

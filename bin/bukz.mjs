@@ -92,11 +92,16 @@ Feed (read-only; for famdash — not the dashboard)
                   emitted. One cash_outlook; light is in the summary only.
                     --port N (default 7801, or BUKZ_FEED_PORT)
                     --host HOST (default 127.0.0.1, or BUKZ_FEED_HOST)
+                    --allow-non-loopback
+                      Required for any host other than 127.0.0.1, localhost,
+                      or ::1. Same opt-in: BUKZ_FEED_ALLOW_NON_LOOPBACK=1.
+                      Without it, feed-serve refuses to start. This repo is
+                      public — Cipher must CLEAR before that flag. The
+                      refusal does not include secrets.
                     --in FILE  --bills FILE
                   Demo: set BUKZ_API_KEY in the environment (never in chat),
                   then node bin/bukz.mjs feed-serve --in fixtures/sample.json
                        --bills fixtures/bills.json
-                  A public URL needs Cipher CLEAR; this repo is public.
                   Contract: docs/feed.md
 
 Write (mutating — YNAB only; DRY-RUN by default, --yes to apply)

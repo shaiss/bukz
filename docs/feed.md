@@ -72,4 +72,6 @@ curl -H "Authorization: Bearer $BUKZ_API_KEY" \
 
 `node bin/bukz.mjs check` reports `BUKZ_API_KEY` as a boolean only.
 
-Default bind is `127.0.0.1:7801` (`--host` / `BUKZ_FEED_HOST`, `--port` / `BUKZ_FEED_PORT`). This repository is **public**. Cipher must CLEAR before any non-loopback or public URL.
+Default bind is `127.0.0.1:7801` (`--host` / `BUKZ_FEED_HOST`, `--port` / `BUKZ_FEED_PORT`).
+
+Loopback (`127.0.0.1`, `localhost`, `::1`) starts with no extra flag. Any other host is refused before the process listens. Pass `--allow-non-loopback` or set `BUKZ_FEED_ALLOW_NON_LOOPBACK=1` to opt in. Either one is enough; the env value must be exactly `1`. This repository is **public**. Cipher must CLEAR before that flag. Do not publish a URL until then. The refusal names the flag and the host you asked for. It does not include secrets, tokens, or `.env` contents.

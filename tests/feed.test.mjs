@@ -314,6 +314,30 @@ test('sealFeed: a leaked payload becomes generic error items', () => {
   assert.equal(sealed.items.length, 5);
 });
 
+test('feed http: unauthenticated /healthz is 200; feed without bearer is 401', async (t) => {
+  const server = await startFeedServer({
+    port: 0,
+    dataPath: resolve(import.meta.dirname, 'no-such-cache.json'),
+    billsPath: resolve(import.meta.dirname, 'no-such-bills.json'),
+    apiKey: 'test-feed-key',
+  });
+  t.after(() => new Promise((done) => server.close(done)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const health = await fetch(base + '/healthz');
+  assert.equal(health.status, 200);
+  assert.match(health.headers.get('content-type'), /application\/json/);
+  assert.deepEqual(await health.json(), { ok: true });
+
+  const root = await fetch(base + '/');
+  assert.equal(root.status, 200);
+  assert.deepEqual(await root.json(), { ok: true });
+
+  const feed = await fetch(base + '/api/feed/recent');
+  assert.equal(feed.status, 401);
+  assert.deepEqual(await feed.json(), { error: 'unauthorized' });
+});
+
 test('feed http: missing or wrong bearer is 401; good bearer is 200', async (t) => {
   const server = await startFeedServer({
     port: 0,

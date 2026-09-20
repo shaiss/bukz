@@ -35,8 +35,9 @@ const BAND_TITLE = {
   funded: 'Month-ahead funding is in place',
 };
 
-// Locked titles/summaries/kinds — scrubbed before forbidden substring checks so
-// common YNAB labels (account "Cash", category "Bills") do not false-seal.
+// Locked titles/summaries/kinds — removed from the forbid haystack only as exact
+// template copy so YNAB labels that collide with that copy (account "Cash",
+// category "Bills") do not false-seal. Free-text leaks of those labels still hit.
 const FEED_SAFE_PHRASES = [
   CASH_TITLE,
   ...Object.values(BILL_TITLE),
@@ -65,8 +66,9 @@ const FEED_SAFE_PHRASES = [
   'windowDays',
 ].sort((a, b) => b.length - a.length);
 
-// Locked enums / status words. Word-boundary scrub only — do not strip these
-// from inside a leaked payee (e.g. "Overstock" must still match "Overstock").
+// Locked meta/status enums. Scrubbed only as JSON string values ("watch"), never
+// as bare words in title/summary — that would weaken the deny list (account
+// "Watch" in "Watch balance low" must still seal).
 const FEED_SAFE_ENUMS = [
   'covered',
   'watch',
@@ -191,8 +193,8 @@ export function leakHits(value, forbidden = [], { amounts = false } = {}) {
   if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(blob)) {
     hits.push('uuid');
   }
-  // Substring deny-list runs on a haystack with locked feed copy removed so
-  // labels like account "Cash" or category "Bills" do not trip titles/meta.
+  // Forbid substrings run on a haystack with locked template copy removed —
+  // not a weaker deny list: $ / PII / free-text payee|account leaks still hit.
   const lower = scrubSafeFeedHaystack(blob).toLowerCase();
   for (const raw of forbidden) {
     const s = String(raw ?? '').trim();
@@ -202,22 +204,28 @@ export function leakHits(value, forbidden = [], { amounts = false } = {}) {
   return hits;
 }
 
-/** Strip locked titles/summaries/enums and structural dates from a blob. */
+/**
+ * Strip locked template copy from a blob before forbid substring checks.
+ * Does not strip deny-list material from free title/summary text.
+ */
 export function scrubSafeFeedHaystack(blob) {
   let s = String(blob ?? '');
   for (const phrase of FEED_SAFE_PHRASES) {
     s = s.replaceAll(new RegExp(escapeRegExp(phrase), 'gi'), ' ');
   }
+  // Variance titles are `${group} is over|under` — scrub only that locked suffix.
+  s = s.replace(/ is over\b/gi, ' ');
+  s = s.replace(/ is under\b/gi, ' ');
+  // Enum values only when JSON-encoded, never bare words in copy.
   for (const token of FEED_SAFE_ENUMS) {
-    s = s.replaceAll(new RegExp(`\\b${escapeRegExp(token)}\\b`, 'gi'), ' ');
+    s = s.replaceAll(new RegExp(`"${escapeRegExp(token)}"`, 'gi'), '""');
   }
-  // Meta / item keys only (quoted key form) — keeps "Coverage" leaks in copy detectable
-  // when they are not merely the locked `"coverage":` field name.
+  // Meta / item keys only (quoted key form).
   s = s.replace(
     /"(kind|count|month|coverage|band|direction|group|source|title|summary|status|id|meta|items|fetchedAt|occurredAt)"\s*:/gi,
     ' '
   );
-  // Ids / occurredAt / meta.month are expected; they are not payee leaks.
+  // Ids / occurredAt / meta.month are expected structural dates, not payee leaks.
   s = s.replace(/\d{4}-\d{2}-\d{2}T[\d.:]+Z/gi, ' ');
   s = s.replace(/\d{4}-\d{2}-\d{2}/g, ' ');
   s = s.replace(/\d{4}-\d{2}/g, ' ');

@@ -428,6 +428,50 @@ test('leakHits: colliding labels are ignored in locked copy but real payee leaks
   assert.deepEqual(leakHits(leaked, ['Hidden Merchant']), ['Hidden Merchant']);
 });
 
+test('leakHits: deny list is not weakened — free-text account/payee/amount still hit', () => {
+  // Enum-shaped account names must still seal when they appear in free copy,
+  // not only as the locked JSON meta value ("watch").
+  const watchLeak = [{
+    id: 'bukz:bill_coverage:2026-09-10',
+    source: 'bukz',
+    title: 'Watch balance needs a look',
+    summary: 'Scheduled-bill coverage for the window.',
+    occurredAt: '2026-09-10T00:00:00.000Z',
+    status: 'ok',
+    meta: { kind: 'bill_coverage', coverage: 'watch', windowDays: '14' },
+  }];
+  assert.deepEqual(leakHits(watchLeak, ['Watch']), ['Watch']);
+
+  // "Cash" in locked title is ignored; "Cash" outside the template still hits.
+  const cashLeak = [{
+    id: 'bukz:cash_outlook:2026-09-10',
+    source: 'bukz',
+    title: 'Cash outlook',
+    summary: 'Cash account looks thin.',
+    occurredAt: '2026-09-10T00:00:00.000Z',
+    status: 'ok',
+    meta: { kind: 'cash_outlook', liabilityWatch: 'false' },
+  }];
+  assert.deepEqual(leakHits(cashLeak, ['Cash']), ['Cash']);
+
+  const amountLeak = [{
+    id: 'bukz:cash_outlook:2026-09-10',
+    source: 'bukz',
+    title: 'Cash outlook',
+    summary: 'Overall light is green.',
+    occurredAt: '2026-09-10T00:00:00.000Z',
+    status: 'ok',
+    meta: { kind: 'cash_outlook', liabilityWatch: 'false', total: '$12.50' },
+  }];
+  assert.ok(leakHits(amountLeak, []).includes('$'));
+  assert.ok(leakHits(amountLeak, []).includes('decimal-amount'));
+
+  const now = new Date('2026-09-10T00:00:00.000Z');
+  const sealed = sealFeed({ items: watchLeak, fetchedAt: now.toISOString() }, ['Watch'], now);
+  assert.ok(sealed.items.every((item) => item.status === 'error'));
+  assert.equal(JSON.stringify(sealed).includes('Watch balance'), false);
+});
+
 test('feed http: unauthenticated /healthz is 200; feed without bearer is 401', async (t) => {
   const server = await startFeedServer({
     port: 0,

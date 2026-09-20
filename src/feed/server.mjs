@@ -5,9 +5,10 @@ import { timingSafeEqual } from 'node:crypto';
 import { amountsUnlocked, buildFeed, clampFeedLimit } from './feed.mjs';
 
 // Read-only famdash feed. Separate from the dashboard server on purpose:
-// `serve` is unauthenticated and must stay on 127.0.0.1, while this process
-// speaks only GET /api/feed/recent and checks a bearer token. It reads the
-// last cache from disk — it never calls YNAB or Xero.
+// `serve` is unauthenticated and must stay on 127.0.0.1. This process
+// answers GET /healthz and GET / with {"ok":true} (liveness only: no auth,
+// no cache, no secrets) and GET /api/feed/recent behind a bearer token.
+// The feed reads the last cache from disk — it never calls YNAB or Xero.
 
 export function bearerOk(authorization, expected) {
   if (!expected) return false;
@@ -47,6 +48,12 @@ async function handle(req, res, opts) {
     return;
   }
   const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+  // Railway probes `/` (and operators probe `/healthz`). Liveness only —
+  // do not read the cache or the key here.
+  if (url.pathname === '/healthz' || url.pathname === '/') {
+    sendJson(res, 200, { ok: true });
+    return;
+  }
   if (url.pathname !== '/api/feed/recent') {
     sendJson(res, 404, { error: 'not found' });
     return;

@@ -11,6 +11,7 @@ GET /api/feed/recent?limit=1–50
 Authorization: Bearer <BUKZ_API_KEY>
 ```
 
+- `GET /healthz` and `GET /` return `{"ok":true}` with no auth — liveness only, not the finance feed.
 - Missing or wrong bearer → `401` `{"error":"unauthorized"}`. The key is not accepted in the query string.
 - Success → `{"items": FeedItem[], "fetchedAt": "<ISO>"}`.
 - `limit` clamps to 1–50 (default 10). Non-numeric values use the default.

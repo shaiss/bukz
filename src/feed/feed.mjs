@@ -35,6 +35,59 @@ const BAND_TITLE = {
   funded: 'Month-ahead funding is in place',
 };
 
+// Locked titles/summaries/kinds — scrubbed before forbidden substring checks so
+// common YNAB labels (account "Cash", category "Bills") do not false-seal.
+const FEED_SAFE_PHRASES = [
+  CASH_TITLE,
+  ...Object.values(BILL_TITLE),
+  ...Object.values(BAND_TITLE),
+  'Overall light is green.',
+  'Overall light is yellow.',
+  'Overall light is red.',
+  'Transactions are missing a category',
+  'Rows in the focus month with no category.',
+  'Scheduled-bill coverage for the window.',
+  'Month-ahead funding band.',
+  'Category group compared with its plan.',
+  'Category inbox is not available yet',
+  'No fresh cache to read.',
+  'Bill coverage is not available yet',
+  'Month-ahead funding is not available yet',
+  'Category-group variance is not available yet',
+  'Placeholder, not a spending signal.',
+  'cash_outlook',
+  'uncategorized',
+  'bill_coverage',
+  'budget_funding',
+  'variance_flag',
+  'liabilityWatch',
+  'cacheAge',
+  'windowDays',
+].sort((a, b) => b.length - a.length);
+
+// Locked enums / status words. Word-boundary scrub only — do not strip these
+// from inside a leaked payee (e.g. "Overstock" must still match "Overstock").
+const FEED_SAFE_ENUMS = [
+  'covered',
+  'watch',
+  'short',
+  'hold',
+  'partial',
+  'funded',
+  'over',
+  'under',
+  'true',
+  'false',
+  'green',
+  'yellow',
+  'red',
+  'none',
+  'bukz',
+  'ok',
+  'stub',
+  'error',
+];
+
 const LIABILITY =
   /\b(liabilit(?:y|ies)|liable|debts?|owe[ds]?|overdrafts?|collections|shortfalls?|bankrupt(?:cy)?)\b/i;
 
@@ -138,13 +191,41 @@ export function leakHits(value, forbidden = [], { amounts = false } = {}) {
   if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(blob)) {
     hits.push('uuid');
   }
-  const lower = blob.toLowerCase();
+  // Substring deny-list runs on a haystack with locked feed copy removed so
+  // labels like account "Cash" or category "Bills" do not trip titles/meta.
+  const lower = scrubSafeFeedHaystack(blob).toLowerCase();
   for (const raw of forbidden) {
     const s = String(raw ?? '').trim();
     if (s.length < 4 || /^\d+(\.\d+)?$/.test(s)) continue;
     if (lower.includes(s.toLowerCase())) hits.push(s);
   }
   return hits;
+}
+
+/** Strip locked titles/summaries/enums and structural dates from a blob. */
+export function scrubSafeFeedHaystack(blob) {
+  let s = String(blob ?? '');
+  for (const phrase of FEED_SAFE_PHRASES) {
+    s = s.replaceAll(new RegExp(escapeRegExp(phrase), 'gi'), ' ');
+  }
+  for (const token of FEED_SAFE_ENUMS) {
+    s = s.replaceAll(new RegExp(`\\b${escapeRegExp(token)}\\b`, 'gi'), ' ');
+  }
+  // Meta / item keys only (quoted key form) — keeps "Coverage" leaks in copy detectable
+  // when they are not merely the locked `"coverage":` field name.
+  s = s.replace(
+    /"(kind|count|month|coverage|band|direction|group|source|title|summary|status|id|meta|items|fetchedAt|occurredAt)"\s*:/gi,
+    ' '
+  );
+  // Ids / occurredAt / meta.month are expected; they are not payee leaks.
+  s = s.replace(/\d{4}-\d{2}-\d{2}T[\d.:]+Z/gi, ' ');
+  s = s.replace(/\d{4}-\d{2}-\d{2}/g, ' ');
+  s = s.replace(/\d{4}-\d{2}/g, ' ');
+  return s;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function sensitiveStrings(cache, bills) {

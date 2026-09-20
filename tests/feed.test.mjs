@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { isUncategorized } from '../src/analysis/categorization.mjs';
 import {
@@ -16,11 +18,18 @@ import {
 } from '../src/feed/feed.mjs';
 import { startFeedServer } from '../src/feed/server.mjs';
 import { startServer } from '../src/server.mjs';
+import {
+  assertFeedHost,
+  feedNonLoopbackAllowed,
+  isLoopbackHost,
+} from '../src/commands/feed-serve.mjs';
 
+const TEST_DIR = fileURLToPath(new URL('.', import.meta.url));
+const ROOT = resolve(TEST_DIR, '..');
 const FIXTURE = JSON.parse(readFileSync(new URL('../fixtures/sample.json', import.meta.url), 'utf8'));
 const BILLS = JSON.parse(readFileSync(new URL('../fixtures/bills.json', import.meta.url), 'utf8'));
-const FIXTURE_PATH = resolve(import.meta.dirname, '..', 'fixtures', 'sample.json');
-const BILLS_PATH = resolve(import.meta.dirname, '..', 'fixtures', 'bills.json');
+const FIXTURE_PATH = resolve(ROOT, 'fixtures', 'sample.json');
+const BILLS_PATH = resolve(ROOT, 'fixtures', 'bills.json');
 const FRESH = new Date('2026-07-05T12:00:00.000Z');
 
 const KINDS = ['cash_outlook', 'uncategorized', 'bill_coverage', 'budget_funding', 'variance_flag'];
@@ -415,8 +424,8 @@ test('feed http: unset key rejects even a blank bearer', async (t) => {
 test('feed http: missing cache is stubs, not a 500', async (t) => {
   const server = await startFeedServer({
     port: 0,
-    dataPath: resolve(import.meta.dirname, 'no-such-cache.json'),
-    billsPath: resolve(import.meta.dirname, 'no-such-bills.json'),
+    dataPath: resolve(TEST_DIR, 'no-such-cache.json'),
+    billsPath: resolve(TEST_DIR, 'no-such-bills.json'),
     apiKey: 'test-feed-key',
   });
   t.after(() => new Promise((done) => server.close(done)));
@@ -504,3 +513,144 @@ function assertClean(items, cache, bills) {
     for (const value of Object.values(item.meta)) assert.equal(typeof value, 'string');
   }
 }
+
+const BIN = resolve(ROOT, 'bin', 'bukz.mjs');
+
+function feedEnv(extra = {}) {
+  const env = {
+    ...process.env,
+    // Present keys win over .env, so a local opt-in cannot flip these tests.
+    BUKZ_FEED_PORT: '7801',
+    BUKZ_FEED_ALLOW_NON_LOOPBACK: '',
+  };
+  delete env.BUKZ_FEED_HOST;
+  return { ...env, ...extra };
+}
+
+function runFeed(args, env = {}) {
+  return spawnSync(process.execPath, [BIN, 'feed-serve', ...args], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: feedEnv(env),
+    timeout: 5000,
+  });
+}
+
+test('feed bind: loopback hosts need no opt-in', () => {
+  for (const host of ['127.0.0.1', 'localhost', '::1']) {
+    assert.equal(isLoopbackHost(host), true);
+    assert.equal(assertFeedHost(host), host);
+    assert.equal(assertFeedHost(host, { allowNonLoopback: false }), host);
+  }
+  assert.equal(assertFeedHost('127.0.0.1', { allowNonLoopback: true }), '127.0.0.1');
+});
+
+test('feed bind: non-loopback is refused unless the flag or env is set', () => {
+  for (const host of ['0.0.0.0', '10.1.2.3', 'example.com', 'LOCALHOST']) {
+    assert.equal(isLoopbackHost(host), false);
+    assert.throws(() => assertFeedHost(host), /Cipher must CLEAR/);
+    assert.throws(() => assertFeedHost(host, { allowNonLoopback: false }), /public/);
+    assert.equal(assertFeedHost(host, { allowNonLoopback: true }), host);
+  }
+  assert.equal(feedNonLoopbackAllowed(false, '1'), true);
+  assert.equal(feedNonLoopbackAllowed(false, ' 1 '), false);
+  assert.equal(feedNonLoopbackAllowed(true, undefined), true);
+  assert.equal(feedNonLoopbackAllowed(true, '0'), true);
+  for (const value of [undefined, '', '0', 'true', 'yes', 'TRUE']) {
+    assert.equal(feedNonLoopbackAllowed(false, value), false);
+  }
+  assert.equal(assertFeedHost('0.0.0.0', { allowNonLoopback: feedNonLoopbackAllowed(false, '1') }), '0.0.0.0');
+  assert.throws(
+    () => assertFeedHost('0.0.0.0', { allowNonLoopback: feedNonLoopbackAllowed(false, '0') }),
+    /--allow-non-loopback/,
+  );
+});
+
+test('feed bind: refusal names the flag and does not mention secrets or .env', () => {
+  assert.throws(
+    () => assertFeedHost('0.0.0.0'),
+    (err) => {
+      assert.match(err.message, /BUKZ_FEED_ALLOW_NON_LOOPBACK=1/);
+      assert.match(err.message, /Cipher must CLEAR/);
+      assert.match(err.message, /public/);
+      assert.equal(err.message.includes('.env'), false);
+      assert.equal(err.message.includes('Bearer'), false);
+      assert.equal(err.message.includes('BUKZ_API_KEY'), false);
+      return true;
+    },
+  );
+  assert.throws(
+    () => assertFeedHost('not a host'),
+    (err) => {
+      assert.equal(err.message.includes('not a host'), false);
+      assert.equal(err.message.includes('.env'), false);
+      return true;
+    },
+  );
+});
+
+test('CLI feed-serve exits on a non-loopback host and prints no secrets', () => {
+  const secret = 'planted-feed-token-not-a-host';
+  const res = runFeed(['--host', '0.0.0.0'], { BUKZ_API_KEY: secret });
+  assert.equal(res.status, 1, res.stderr);
+  assert.equal(res.stdout, '');
+  assert.match(res.stderr, /non-loopback/);
+  assert.match(res.stderr, /Cipher must CLEAR/);
+  assert.match(res.stderr, /public/);
+  assert.match(res.stderr, /--allow-non-loopback/);
+  assert.match(res.stderr, /BUKZ_FEED_ALLOW_NON_LOOPBACK/);
+  assert.equal(res.stderr.includes(secret), false);
+  assert.equal(res.stderr.includes('.env'), false);
+});
+
+test('CLI feed-serve exits when BUKZ_FEED_HOST is not loopback', () => {
+  const res = runFeed([], { BUKZ_FEED_HOST: '10.9.8.7' });
+  assert.equal(res.status, 1, res.stderr);
+  assert.equal(res.stdout, '');
+  assert.match(res.stderr, /10\.9\.8\.7/);
+  assert.match(res.stderr, /Cipher must CLEAR/);
+});
+
+test('CLI feed-serve allows a non-loopback host only with explicit intent, and does not listen', () => {
+  const flagged = runFeed(['--host', '0.0.0.0', '--allow-non-loopback', '--port', '0']);
+  assert.equal(flagged.status, 1, flagged.stderr);
+  assert.equal(flagged.stdout, '');
+  assert.match(flagged.stderr, /--port must be 1/);
+  assert.doesNotMatch(flagged.stderr, /Refusing to bind/);
+
+  const fromEnv = runFeed(['--host', '10.1.2.3', '--port', '70000'], {
+    BUKZ_FEED_ALLOW_NON_LOOPBACK: '1',
+  });
+  assert.equal(fromEnv.status, 1, fromEnv.stderr);
+  assert.match(fromEnv.stderr, /--port must be 1/);
+  assert.doesNotMatch(fromEnv.stderr, /Refusing to bind/);
+
+  const typo = runFeed(['--host', '0.0.0.0', '--port', '0'], {
+    BUKZ_FEED_ALLOW_NON_LOOPBACK: 'true',
+  });
+  assert.equal(typo.status, 1);
+  assert.match(typo.stderr, /Refusing to bind/);
+  assert.match(typo.stderr, /Cipher must CLEAR/);
+});
+
+test('CLI feed-serve does not refuse loopback hosts', () => {
+  for (const host of ['127.0.0.1', 'localhost', '::1']) {
+    const res = runFeed(['--host', host, '--port', '0']);
+    assert.equal(res.status, 1, res.stderr);
+    assert.equal(res.stdout, '');
+    assert.match(res.stderr, /--port must be 1/);
+    assert.doesNotMatch(res.stderr, /Refusing to bind/);
+  }
+});
+
+test('help text documents the non-loopback opt-in', () => {
+  const res = spawnSync(process.execPath, [BIN, 'help'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  assert.equal(res.status, 0);
+  assert.match(res.stdout, /--allow-non-loopback/);
+  assert.match(res.stdout, /BUKZ_FEED_ALLOW_NON_LOOPBACK=1/);
+  assert.match(res.stdout, /Cipher must CLEAR/);
+  assert.match(res.stdout, /does not include secrets/);
+});

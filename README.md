@@ -62,7 +62,7 @@ A read-only visualization layer over the same cache: the weekly checkpoint with 
 node bin/bukz.mjs feed-serve --in fixtures/sample.json --bills fixtures/bills.json
 ```
 
-`GET /api/feed/recent` (default `127.0.0.1:7801`) returns five signal kinds — one cash outlook (light in the summary only), uncategorized count, bill coverage, month-ahead funding band, category-group variance — with `Authorization: Bearer $BUKZ_API_KEY`. It reads the last cache only. No dollar amounts (not even rounded; `?amounts=1` is the future unlock and does not add figures in v0), no `fundedPct`, no payees, no account names. This repo is public: Cipher must CLEAR before any non-loopback URL. See `docs/feed.md`.
+`GET /api/feed/recent` (default `127.0.0.1:7801`) returns five signal kinds — one cash outlook (light in the summary only), uncategorized count, bill coverage, month-ahead funding band, category-group variance — with `Authorization: Bearer $BUKZ_API_KEY`. It reads the last cache only. No dollar amounts (not even rounded; `?amounts=1` is the future unlock and does not add figures in v0), no `fundedPct`, no payees, no account names. Loopback (`127.0.0.1`, `localhost`, `::1`) is the default. Any other `--host` or `BUKZ_FEED_HOST` is refused unless you pass `--allow-non-loopback` or set `BUKZ_FEED_ALLOW_NON_LOOPBACK=1`. This repo is public: Cipher must CLEAR before that flag. The refusal does not include secrets. See `docs/feed.md`.
 
 ## Your keys never meet the model
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { isUncategorized } from '../src/analysis/categorization.mjs';
 import {
@@ -23,10 +24,12 @@ import {
   isLoopbackHost,
 } from '../src/commands/feed-serve.mjs';
 
+const TEST_DIR = fileURLToPath(new URL('.', import.meta.url));
+const ROOT = resolve(TEST_DIR, '..');
 const FIXTURE = JSON.parse(readFileSync(new URL('../fixtures/sample.json', import.meta.url), 'utf8'));
 const BILLS = JSON.parse(readFileSync(new URL('../fixtures/bills.json', import.meta.url), 'utf8'));
-const FIXTURE_PATH = resolve(import.meta.dirname, '..', 'fixtures', 'sample.json');
-const BILLS_PATH = resolve(import.meta.dirname, '..', 'fixtures', 'bills.json');
+const FIXTURE_PATH = resolve(ROOT, 'fixtures', 'sample.json');
+const BILLS_PATH = resolve(ROOT, 'fixtures', 'bills.json');
 const FRESH = new Date('2026-07-05T12:00:00.000Z');
 
 const KINDS = ['cash_outlook', 'uncategorized', 'bill_coverage', 'budget_funding', 'variance_flag'];
@@ -397,8 +400,8 @@ test('feed http: unset key rejects even a blank bearer', async (t) => {
 test('feed http: missing cache is stubs, not a 500', async (t) => {
   const server = await startFeedServer({
     port: 0,
-    dataPath: resolve(import.meta.dirname, 'no-such-cache.json'),
-    billsPath: resolve(import.meta.dirname, 'no-such-bills.json'),
+    dataPath: resolve(TEST_DIR, 'no-such-cache.json'),
+    billsPath: resolve(TEST_DIR, 'no-such-bills.json'),
     apiKey: 'test-feed-key',
   });
   t.after(() => new Promise((done) => server.close(done)));
@@ -487,8 +490,7 @@ function assertClean(items, cache, bills) {
   }
 }
 
-const BIN = resolve(import.meta.dirname, '..', 'bin', 'bukz.mjs');
-const ROOT = resolve(import.meta.dirname, '..');
+const BIN = resolve(ROOT, 'bin', 'bukz.mjs');
 
 function feedEnv(extra = {}) {
   const env = {
@@ -527,7 +529,7 @@ test('feed bind: non-loopback is refused unless the flag or env is set', () => {
     assert.equal(assertFeedHost(host, { allowNonLoopback: true }), host);
   }
   assert.equal(feedNonLoopbackAllowed(false, '1'), true);
-  assert.equal(feedNonLoopbackAllowed(false, ' 1 '), true);
+  assert.equal(feedNonLoopbackAllowed(false, ' 1 '), false);
   assert.equal(feedNonLoopbackAllowed(true, undefined), true);
   assert.equal(feedNonLoopbackAllowed(true, '0'), true);
   for (const value of [undefined, '', '0', 'true', 'yes', 'TRUE']) {

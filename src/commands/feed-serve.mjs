@@ -62,11 +62,12 @@ export function isLoopbackHost(host) {
   return host === '127.0.0.1' || host === 'localhost' || host === '::1';
 }
 
-// `1` is the only accepted env value, so a typo cannot open the bind.
-// The CLI flag and the env var are independent; either one is enough.
+// `1` is the only accepted env value, with no trimming, so whitespace or a
+// typo cannot open the bind. The CLI flag and the env var are independent;
+// either one is enough.
 export function feedNonLoopbackAllowed(flag, envValue) {
   if (flag) return true;
-  return String(envValue ?? '').trim() === '1';
+  return envValue === '1';
 }
 
 export function assertFeedHost(rawHost, { allowNonLoopback = false } = {}) {

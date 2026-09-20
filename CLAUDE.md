@@ -61,8 +61,8 @@ src/server.mjs         read-only localhost server behind `serve` (static SPA
 src/feed/              pure mappers (feed.mjs) + GET /api/feed/recent
                        (server.mjs) for famdash. Bearer BUKZ_API_KEY, last
                        cache only, default bind 127.0.0.1. Non-loopback
-                       hosts hard-fail unless --allow-non-loopback. Not the
-                       dashboard.
+                       hosts hard-fail unless --allow-non-loopback or
+                       BUKZ_FEED_ALLOW_NON_LOOPBACK=1. Not the dashboard.
 .claude/skills/        the AI team: bukz-setup, spot-check, anomalies,
                        mismatches, rules, triage, receipts, close-review,
                        weekly-checkpoint, budget

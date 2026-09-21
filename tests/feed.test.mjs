@@ -323,6 +323,155 @@ test('sealFeed: a leaked payload becomes generic error items', () => {
   assert.equal(sealed.items.length, 5);
 });
 
+test('buildFeed: YNAB labels that collide with locked copy do not false-seal', () => {
+  // Real YNAB books often use account "Cash", category "Bills", etc. Those
+  // strings are substrings of locked titles/meta; sealing on them was the
+  // Railway symptom (fresh cache → status=error placeholders).
+  const catFood = '11111111-2222-3333-4444-555555555555';
+  const catBills = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  const cache = {
+    pulledAt: '2026-09-19T12:00:00.000Z',
+    transactions: [
+      {
+        id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        date: '2026-09-10',
+        amount: -5.25,
+        payee: 'Coverage',
+        category: 'Bills',
+        categoryId: catBills,
+        account: 'Cash',
+        transfer: false,
+      },
+      {
+        id: 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff',
+        date: '2026-09-11',
+        amount: -3,
+        payee: 'Quiet Merchant',
+        category: 'Month',
+        categoryId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        account: 'Cash',
+        transfer: false,
+      },
+    ],
+    categories: [
+      { id: catFood, name: 'Food', group: 'Living' },
+      { id: catBills, name: 'Bills', group: 'Obligations' },
+      { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', name: 'Month', group: 'Living' },
+    ],
+    accounts: [{ id: '99999999-8888-7777-6666-555555555555', name: 'Cash', closed: false, balance: 5000, type: 'cash' }],
+    budgetMonths: [
+      { month: '2026-08', categories: [{ id: catBills, name: 'Bills', budgeted: 20 }] },
+      { month: '2026-09', categories: [{ id: catBills, name: 'Bills', budgeted: 20 }] },
+      { month: '2026-10', categories: [{ id: catBills, name: 'Bills', budgeted: 20 }] },
+    ],
+  };
+  const bills = [{
+    name: 'Funding',
+    amount: 10,
+    cadence: 'monthly',
+    dayOfMonth: 1,
+    paidFrom: 'Cash',
+    autopay: 'yes',
+    active: true,
+  }];
+  const now = new Date('2026-09-19T12:00:00.000Z');
+  const { items } = buildFeed({ cache, bills, now, limit: 50 });
+  assert.ok(items.every((item) => item.status === 'ok'), JSON.stringify(items.map((i) => i.status)));
+  assert.equal(items.some((item) => item.id.includes(':stub')), false);
+  assert.match(items.find((item) => item.meta.kind === 'cash_outlook').summary, /Overall light is/);
+  assertClean(items, cache, bills);
+
+  const stale = buildFeed({
+    cache: { ...cache, pulledAt: '2026-09-18T00:00:00.000Z' },
+    bills,
+    now,
+    limit: 50,
+  });
+  assert.ok(stale.items.every((item) => item.status === 'stub'));
+  assert.equal(stale.items.every((item) => item.status === 'error'), false);
+  assert.match(stale.items[0].summary, /Overall light is/);
+});
+
+test('leakHits: colliding labels are ignored in locked copy but real payee leaks still hit', () => {
+  const clean = buildFeed({
+    cache: {
+      pulledAt: '2026-09-19T12:00:00.000Z',
+      transactions: [{
+        id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        date: '2026-09-10',
+        amount: -5,
+        payee: 'Quiet Merchant',
+        category: 'Food',
+        categoryId: 'cat-food',
+        account: 'Cash',
+        transfer: false,
+      }],
+      categories: [{ id: 'cat-food', name: 'Food', group: 'Living' }],
+      accounts: [{ id: 'acct', name: 'Cash', closed: false, balance: 100, type: 'cash' }],
+      budgetMonths: [],
+    },
+    bills: [],
+    now: new Date('2026-09-19T12:00:00.000Z'),
+    limit: 50,
+  }).items;
+  assert.deepEqual(leakHits(clean, ['Cash', 'Bills', 'Coverage', 'Month', 'Funding']), []);
+
+  const leaked = [{
+    id: 'bukz:cash_outlook:2026-09-10',
+    source: 'bukz',
+    title: 'Paid Hidden Merchant',
+    summary: 'Overall light is green.',
+    occurredAt: '2026-09-10T00:00:00.000Z',
+    status: 'ok',
+    meta: { kind: 'cash_outlook', liabilityWatch: 'false' },
+  }];
+  assert.deepEqual(leakHits(leaked, ['Hidden Merchant']), ['Hidden Merchant']);
+});
+
+test('leakHits: deny list is not weakened — free-text account/payee/amount still hit', () => {
+  // Enum-shaped account names must still seal when they appear in free copy,
+  // not only as the locked JSON meta value ("watch").
+  const watchLeak = [{
+    id: 'bukz:bill_coverage:2026-09-10',
+    source: 'bukz',
+    title: 'Watch balance needs a look',
+    summary: 'Scheduled-bill coverage for the window.',
+    occurredAt: '2026-09-10T00:00:00.000Z',
+    status: 'ok',
+    meta: { kind: 'bill_coverage', coverage: 'watch', windowDays: '14' },
+  }];
+  assert.deepEqual(leakHits(watchLeak, ['Watch']), ['Watch']);
+
+  // "Cash" in locked title is ignored; "Cash" outside the template still hits.
+  const cashLeak = [{
+    id: 'bukz:cash_outlook:2026-09-10',
+    source: 'bukz',
+    title: 'Cash outlook',
+    summary: 'Cash account looks thin.',
+    occurredAt: '2026-09-10T00:00:00.000Z',
+    status: 'ok',
+    meta: { kind: 'cash_outlook', liabilityWatch: 'false' },
+  }];
+  assert.deepEqual(leakHits(cashLeak, ['Cash']), ['Cash']);
+
+  const amountLeak = [{
+    id: 'bukz:cash_outlook:2026-09-10',
+    source: 'bukz',
+    title: 'Cash outlook',
+    summary: 'Overall light is green.',
+    occurredAt: '2026-09-10T00:00:00.000Z',
+    status: 'ok',
+    meta: { kind: 'cash_outlook', liabilityWatch: 'false', total: '$12.50' },
+  }];
+  assert.ok(leakHits(amountLeak, []).includes('$'));
+  assert.ok(leakHits(amountLeak, []).includes('decimal-amount'));
+
+  const now = new Date('2026-09-10T00:00:00.000Z');
+  const sealed = sealFeed({ items: watchLeak, fetchedAt: now.toISOString() }, ['Watch'], now);
+  assert.ok(sealed.items.every((item) => item.status === 'error'));
+  assert.equal(JSON.stringify(sealed).includes('Watch balance'), false);
+});
+
 test('feed http: unauthenticated /healthz is 200; feed without bearer is 401', async (t) => {
   const server = await startFeedServer({
     port: 0,

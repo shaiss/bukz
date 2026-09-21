@@ -35,6 +35,61 @@ const BAND_TITLE = {
   funded: 'Month-ahead funding is in place',
 };
 
+// Locked titles/summaries/kinds — removed from the forbid haystack only as exact
+// template copy so YNAB labels that collide with that copy (account "Cash",
+// category "Bills") do not false-seal. Free-text leaks of those labels still hit.
+const FEED_SAFE_PHRASES = [
+  CASH_TITLE,
+  ...Object.values(BILL_TITLE),
+  ...Object.values(BAND_TITLE),
+  'Overall light is green.',
+  'Overall light is yellow.',
+  'Overall light is red.',
+  'Transactions are missing a category',
+  'Rows in the focus month with no category.',
+  'Scheduled-bill coverage for the window.',
+  'Month-ahead funding band.',
+  'Category group compared with its plan.',
+  'Category inbox is not available yet',
+  'No fresh cache to read.',
+  'Bill coverage is not available yet',
+  'Month-ahead funding is not available yet',
+  'Category-group variance is not available yet',
+  'Placeholder, not a spending signal.',
+  'cash_outlook',
+  'uncategorized',
+  'bill_coverage',
+  'budget_funding',
+  'variance_flag',
+  'liabilityWatch',
+  'cacheAge',
+  'windowDays',
+].sort((a, b) => b.length - a.length);
+
+// Locked meta/status enums. Scrubbed only as JSON string values ("watch"), never
+// as bare words in title/summary — that would weaken the deny list (account
+// "Watch" in "Watch balance low" must still seal).
+const FEED_SAFE_ENUMS = [
+  'covered',
+  'watch',
+  'short',
+  'hold',
+  'partial',
+  'funded',
+  'over',
+  'under',
+  'true',
+  'false',
+  'green',
+  'yellow',
+  'red',
+  'none',
+  'bukz',
+  'ok',
+  'stub',
+  'error',
+];
+
 const LIABILITY =
   /\b(liabilit(?:y|ies)|liable|debts?|owe[ds]?|overdrafts?|collections|shortfalls?|bankrupt(?:cy)?)\b/i;
 
@@ -138,13 +193,47 @@ export function leakHits(value, forbidden = [], { amounts = false } = {}) {
   if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(blob)) {
     hits.push('uuid');
   }
-  const lower = blob.toLowerCase();
+  // Forbid substrings run on a haystack with locked template copy removed —
+  // not a weaker deny list: $ / PII / free-text payee|account leaks still hit.
+  const lower = scrubSafeFeedHaystack(blob).toLowerCase();
   for (const raw of forbidden) {
     const s = String(raw ?? '').trim();
     if (s.length < 4 || /^\d+(\.\d+)?$/.test(s)) continue;
     if (lower.includes(s.toLowerCase())) hits.push(s);
   }
   return hits;
+}
+
+/**
+ * Strip locked template copy from a blob before forbid substring checks.
+ * Does not strip deny-list material from free title/summary text.
+ */
+export function scrubSafeFeedHaystack(blob) {
+  let s = String(blob ?? '');
+  for (const phrase of FEED_SAFE_PHRASES) {
+    s = s.replaceAll(new RegExp(escapeRegExp(phrase), 'gi'), ' ');
+  }
+  // Variance titles are `${group} is over|under` — scrub only that locked suffix.
+  s = s.replace(/ is over\b/gi, ' ');
+  s = s.replace(/ is under\b/gi, ' ');
+  // Enum values only when JSON-encoded, never bare words in copy.
+  for (const token of FEED_SAFE_ENUMS) {
+    s = s.replaceAll(new RegExp(`"${escapeRegExp(token)}"`, 'gi'), '""');
+  }
+  // Meta / item keys only (quoted key form).
+  s = s.replace(
+    /"(kind|count|month|coverage|band|direction|group|source|title|summary|status|id|meta|items|fetchedAt|occurredAt)"\s*:/gi,
+    ' '
+  );
+  // Ids / occurredAt / meta.month are expected structural dates, not payee leaks.
+  s = s.replace(/\d{4}-\d{2}-\d{2}T[\d.:]+Z/gi, ' ');
+  s = s.replace(/\d{4}-\d{2}-\d{2}/g, ' ');
+  s = s.replace(/\d{4}-\d{2}/g, ' ');
+  return s;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function sensitiveStrings(cache, bills) {

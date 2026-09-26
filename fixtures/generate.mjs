@@ -10,8 +10,8 @@
 //   PLANT 5  Blue Bottle Water, biweekly stops in March      → missingRecurring
 //   PLANT 6  Apex Consulting, brand-new payee at -$2,500     → newLargePayees
 //   PLANT 7  Two uncategorized txns + one unapproved         → triage
-//   PLANT 8  Staples: 4× Office Supplies + 1 uncategorized   → rules
-//            (its uncategorized row raises triage's count to 3)
+//   PLANT 8  Staples: 4× Office Supplies + 1 named Uncategorized (null id)
+//            → rules fix-list + uncategorized (raises triage count to 3)
 //   PLANT 9  Costco Wholesale: 3× Groceries vs 3× Dining Out → rules (ambiguous)
 //   PLANT 10 Inter-account transfer pair (July, ±$1000)      → cashflow
 //            (counted there; invisible to every other analysis)
@@ -119,14 +119,16 @@ add('2026-07-02', 'Amazon', -63.12, null);
 add('2026-06-30', 'Check #204', -400, null);
 add('2026-07-04', 'Starbucks', -5.75, 'Dining Out', { approved: false });
 
-// PLANT 8 — Staples: consistent payee whose latest row is uncategorized.
-// Amounts stay in a smooth band (no robust-Z outlier) and dates are irregular
-// (gap MAD > 3) so no anomaly detector trips; mismatches skips it (share = 1.0).
+// PLANT 8 — Staples: consistent payee whose latest row is YNAB-style named
+// "Uncategorized" with null categoryId (truthy name the old `!category` filter
+// missed). Amounts stay in a smooth band (no robust-Z outlier) and dates are
+// irregular (gap MAD > 3) so no anomaly detector trips; mismatches skips it
+// (uncategorized rows are excluded from the categorized set, share stays 1.0).
 add('2026-02-09', 'Staples', -45.6, 'Office Supplies');
 add('2026-02-27', 'Staples', -67.89, 'Office Supplies');
 add('2026-04-14', 'Staples', -89.99, 'Office Supplies');
 add('2026-05-19', 'Staples', -112.4, 'Office Supplies');
-add('2026-06-18', 'Staples', -76.4, null);
+add('2026-06-18', 'Staples', -76.4, 'Uncategorized', { categoryId: null });
 
 // PLANT 9 — Costco: evenly split between two categories → ambiguous, no rule.
 add('2026-01-17', 'Costco Wholesale', -35.4, 'Groceries');

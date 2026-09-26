@@ -1,8 +1,10 @@
+import { isUncategorized } from './categorization.mjs';
+
 // Check transactions against a curated payee→category rule set (user-owned,
 // usually synced from the hub sheet into config/rules.json). Exact payee
 // string match only — fuzzy merchant variants are a later roadmap slice.
 // Output is leads for triage (flag, don't verdict): violations (wrong
-// category), uncategorized matches (rule applies but category is null), and
+// category), uncategorized matches (rule applies but row is still inbox), and
 // correct matches. Transfers are excluded. Every finding row includes account.
 
 export function checkCuratedRules(transactions, rules, opts = {}) {
@@ -35,7 +37,7 @@ export function checkCuratedRules(transactions, rules, opts = {}) {
       ruleNotes: rule.notes ?? null,
     };
 
-    if (!txn.category) {
+    if (isUncategorized(txn)) {
       uncategorized.push(finding);
     } else if (txn.category !== rule.category) {
       violations.push(finding);

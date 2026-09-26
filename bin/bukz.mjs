@@ -58,7 +58,7 @@ Analysis (read from the cache; all output is JSON)
                     (exact payee match; leads only — flag, don't verdict)
                     --rules FILE (demo: fixtures/rules.json)
                     --violations-only  omit correct matches from output
-  uncategorized   Transactions with no category, and unapproved ones
+  uncategorized   Inbox rows (null/empty/"Uncategorized"/null categoryId) + unapproved
   match           Find transactions matching a receipt
                     --amount 42.50 --date YYYY-MM-DD [--window DAYS] [--payee TEXT]
 

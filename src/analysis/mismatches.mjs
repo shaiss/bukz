@@ -1,4 +1,5 @@
 import { groupBy } from './stats.mjs';
+import { isUncategorized } from './categorization.mjs';
 
 // Payee/category divergence: if a payee lands in one category >= `dominance`
 // of the time (with enough history), the stragglers are mismatch candidates.
@@ -6,7 +7,7 @@ import { groupBy } from './stats.mjs';
 // here — reviewing those is what spot-check is for.
 export function findMismatches(transactions, opts = {}) {
   const { minHistory = 3, dominance = 0.8 } = opts;
-  const t = transactions.filter((x) => !x.transfer && x.category && x.payee);
+  const t = transactions.filter((x) => !x.transfer && !isUncategorized(x) && x.payee);
   const flags = [];
   for (const [payee, list] of groupBy(t, (x) => x.payee)) {
     if (list.length < minHistory) continue;

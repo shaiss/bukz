@@ -1,8 +1,9 @@
 // Shared "is this row uncategorized?" predicate. Broader than `!category`:
 // a blank name, the literal label "Uncategorized", or a missing category id
-// all count. Transfers are not special-cased — callers that exclude them
-// (the feed, anomalies, the uncategorized command) filter first or the
-// predicate is applied only to non-transfers.
+// all count — YNAB often lands inbox rows with a truthy name and null id.
+// Keep this the single definition; feed, anomalies, uncategorized, rules,
+// curated-rules, mismatches, and spot-check sampling share it. Transfers are
+// not special-cased — callers that exclude them filter first.
 export function isUncategorized(txn) {
   if (!txn || typeof txn !== 'object') return false;
   const name = txn.category;

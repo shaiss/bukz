@@ -86,7 +86,7 @@ test('rule-check: Staples uncategorized row is a lead, not a violation', () => {
   const { uncategorized, violations } = checkCuratedRules(fixture.transactions, curatedRules);
   assert.equal(uncategorized.length, 1);
   assert.equal(uncategorized[0].payee, 'Staples');
-  assert.equal(uncategorized[0].category, null);
+  assert.equal(uncategorized[0].category, 'Uncategorized');
   assert.equal(uncategorized[0].expectedCategory, 'Office Supplies');
   assert.equal(uncategorized[0].account, 'Demo Checking');
   assert.ok(!violations.some((v) => v.payee === 'Staples'));

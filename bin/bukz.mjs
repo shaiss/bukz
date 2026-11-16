@@ -14,6 +14,8 @@ const COMMANDS = {
   'rule-check': () => import('../src/commands/rule-check.mjs'),
   uncategorized: () => import('../src/commands/uncategorized.mjs'),
   match: () => import('../src/commands/match.mjs'),
+  ghosts: () => import('../src/commands/ghosts.mjs'),
+  drift: () => import('../src/commands/drift.mjs'),
   recategorize: () => import('../src/commands/recategorize.mjs'),
   assign: () => import('../src/commands/assign.mjs'),
   pl: () => import('../src/commands/pl.mjs'),
@@ -76,6 +78,26 @@ Reporting (read from the cache; all output is JSON)
                   red/yellow/green coverage + worst-of rollup
                     --days N (default 14)  --bills FILE (default config/bills.json;
                     demo: --bills fixtures/bills.json)
+
+Imported-duplicate checks (read-only; leads, not verdicts)
+  ghosts          Later-dated imported copies of earlier imported rows on one
+                  account: same amount + same original payee, 1-5 days apart,
+                  two distinct YNAB linked-import ids (YNAB:<mu>:<date>:<n>)
+                    --account <id|name|fragment>  --days N|MIN-MAX (default 1-5)
+                    --allowlist FILE (default config/ghosts.json if present;
+                      template: config/ghosts.example.json)
+                    --text (human-readable; default JSON)
+                  Rows cached before import ids were kept: pull --full once.
+                  Demo: ghosts --in fixtures/ghosts.json --account "Demo Card"
+  drift           Cached cleared balance vs an issuer balance YOU supply
+                  (bukz has no bank integration); reports how much of the gap
+                  the flagged ghosts explain
+                    --account <id|name|fragment>
+                    --issuer-balance=N [--convention owed|signed] | --issuer-file FILE
+                    --threshold N (default 1.00)  --fail-on-alert (exit 2)
+                    --days / --allowlist as for ghosts  --text
+                  Demo: drift --in fixtures/ghosts.json --account "Demo Card"
+                          --issuer-file fixtures/ghosts-issuer.json
 
 Visualization (read-only, localhost only)
   serve           Dashboard SPA over the cache: checkpoint traffic lights,

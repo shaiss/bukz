@@ -15,6 +15,11 @@ import * as xero from './xero.mjs';
 //   approved: boolean,
 //   transfer: boolean,      // analysis excludes transfers
 //   provider: string,
+//   // Optional import provenance (YNAB only; absent/null elsewhere and on rows
+//   // cached before these fields existed — `pull --full` backfills them):
+//   accountId?: string|null,
+//   importId?: string|null,              // YNAB import_id ("YNAB:<milliunits>:<date>:<n>" for linked imports)
+//   importPayeeNameOriginal?: string|null, // YNAB import_payee_name_original
 // }
 // Required exports per provider: listSources, checkAuth, fetchCategories,
 // fetchTransactions({ since }).

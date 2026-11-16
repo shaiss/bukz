@@ -1,0 +1,7 @@
+[
+  {
+    "payeePattern": "^example ride",
+    "maxAbsAmount": 3,
+    "note": "synthetic: short rides repeat for real"
+  }
+]

@@ -211,7 +211,8 @@ export async function fetchTransactions({ since, knowledge } = {}) {
   };
 }
 
-function normalize(t, sub) {
+// Exported for tests (pure: YNAB API object → shared transaction shape).
+export function normalize(t, sub) {
   const src = sub ?? t;
   return {
     id: src.id,
@@ -226,6 +227,14 @@ function normalize(t, sub) {
     approved: t.approved,
     transfer: Boolean(sub?.transfer_account_id ?? t.transfer_account_id),
     provider: 'ynab',
+    // Import provenance (read-only metadata, parent-level for split lines).
+    // Linked-bank imports carry "YNAB:<milliunits>:<date>:<n>"; manual / API
+    // rows carry null. `ghosts` uses these to spot the same charge imported
+    // twice under two dates. Rows cached before this field existed lack it
+    // until a `pull --full` refreshes them.
+    accountId: t.account_id ?? null,
+    importId: t.import_id ?? null,
+    importPayeeNameOriginal: t.import_payee_name_original ?? null,
   };
 }
 

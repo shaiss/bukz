@@ -28,8 +28,8 @@ export function balanceDrift({ ledgerCleared, issuerBalance, convention = 'signe
   if (typeof ledgerCleared !== 'number' || !Number.isFinite(ledgerCleared)) {
     throw new Error('Ledger cleared balance is missing for this account (pull from YNAB first)');
   }
-  if (!(typeof threshold === 'number' && threshold >= 0)) {
-    throw new Error(`Threshold must be a number >= 0 (got ${threshold})`);
+  if (!(typeof threshold === 'number' && Number.isFinite(threshold) && threshold >= 0)) {
+    throw new Error(`Threshold must be a finite number >= 0 (got ${threshold})`);
   }
   const issuerC = toCents(issuerSigned(issuerBalance, convention));
   const gapC = toCents(ledgerCleared) - issuerC;

@@ -217,3 +217,53 @@ test('formatTwinsText: no-flag output omits the verdict caveat', () => {
   assert.match(txt, /0 possible twin pair/);
   assert.doesNotMatch(txt, /Leads, not verdicts/);
 });
+
+// ── review follow-ups ────────────────────────────────────────────────────
+test('ghosts: a legacy row (name only) pairs with a new row (name + accountId)', () => {
+  const rows = [
+    { id: 'old', date: '2026-01-01', amount: -40, payee: 'Example Shop', account: 'Demo Card', importId: 'YNAB:-40000:2026-01-01:1' },
+    { id: 'new', date: '2026-01-03', amount: -40, payee: 'Example Shop', account: 'Demo Card', accountId: 'acc-card', importId: 'YNAB:-40000:2026-01-03:1' },
+  ];
+  assert.deepEqual(findImportedTwins(rows).flagged.map((p) => p.twin.id), ['new']);
+});
+
+test('drift: non-finite threshold is rejected', () => {
+  for (const threshold of [Infinity, -Infinity, NaN, -1]) {
+    assert.throws(() => balanceDrift({ ledgerCleared: -1, issuerBalance: 1, threshold }), /finite number >= 0/);
+  }
+  const r = cli('drift', '--in', 'fixtures/ghosts.json', '--account', 'card', '--issuer-balance=1', '--threshold', '1e309');
+  assert.equal(r.status, 1);
+});
+
+test('cli drift: issuer file source is echoed; file path reported separately', () => {
+  const r = cli('drift', '--in', 'fixtures/ghosts.json', '--account', 'card', '--issuer-file', 'fixtures/ghosts-issuer.json', '--allowlist', 'fixtures/ghosts-allowlist.json');
+  const q = JSON.parse(r.stdout).query;
+  assert.equal(q.issuerSource, 'synthetic demo');
+  assert.equal(q.issuerInput, 'fixtures/ghosts-issuer.json');
+});
+
+test('cli ghosts: backfill hint ignores transfers and fires only when every eligible row lacks an import id', () => {
+  const r = cli('ghosts', '--in', 'fixtures/ghosts.json', '--account', 'card', '--allowlist', 'fixtures/ghosts-allowlist.json');
+  assert.equal(JSON.parse(r.stdout).hint, null);
+});
+
+test('cli ghosts: backfill hint fires for a pre-import-id cache that also holds transfers', async () => {
+  const { mkdtempSync, writeFileSync: wf, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(resolve(tmpdir(), 'bukz-ghosts-'));
+  try {
+    const path = resolve(dir, 'legacy.json');
+    wf(path, JSON.stringify({
+      pulledAt: '2026-01-05T00:00:00.000Z', provider: 'fixture',
+      transactions: [
+        { id: 'l1', date: '2026-01-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', transfer: false },
+        { id: 'l2', date: '2026-01-02', amount: 50, payee: 'Transfer : Demo Checking', account: 'Demo Card', transfer: true },
+      ],
+    }));
+    const r = cli('ghosts', '--in', path, '--account', 'Demo Card', '--allowlist', 'fixtures/ghosts-allowlist.json');
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(JSON.parse(r.stdout).hint, /pull --full/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -26,11 +26,17 @@ export async function run(argv) {
   const rows = accountRows(data.transactions, acct);
   const result = findImportedTwins(rows, { minDays, maxDays, allowlist: allow.entries });
 
+  // Backfill hint: every eligible (non-transfer) row lacks an import id, which
+  // means the cache predates import-id capture rather than "no linked imports".
+  const eligible = rows.filter((t) => !t.transfer).length;
+  const hint =
+    eligible > 0 && result.summary.rowsWithoutImportId === eligible
+      ? 'No rows carry import ids yet — run `node bin/bukz.mjs pull --full` once to backfill them.'
+      : null;
+
   if (opts.text) {
     let text = formatTwinsText(result, { account: acct.name });
-    if (rows.length && result.summary.rowsWithoutImportId === rows.length) {
-      text += '\nNo rows carry import ids yet — run `node bin/bukz.mjs pull --full` once to backfill them.';
-    }
+    if (hint) text += '\n' + hint;
     console.log(text);
     return;
   }
@@ -44,6 +50,7 @@ export async function run(argv) {
       allowlistEntries: allow.entries.length,
       accountRows: rows.length,
     },
+    hint,
     ...result,
   });
 }

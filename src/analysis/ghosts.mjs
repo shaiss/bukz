@@ -109,7 +109,9 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
       skippedNoImportId++;
       continue;
     }
-    const key = [t.accountId || t.account || '', toCents(t.amount), norm(originalPayee(t))].join('\u0000');
+    // Group by account NAME first: rows cached before accountId existed carry
+    // only the name, newly pulled rows carry both, and the two must still pair.
+    const key = [t.account || t.accountId || '', toCents(t.amount), norm(originalPayee(t))].join('\u0000');
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push({ t, parsed });
   }

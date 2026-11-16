@@ -39,14 +39,16 @@ export async function run(argv) {
       balance: f.balance,
       convention: opts.convention ?? f.convention ?? 'signed',
       asOf: f.asOf ?? null,
-      source: opts['issuer-file'],
+      source: f.source ?? null,
+      file: opts['issuer-file'],
     };
   } else {
     issuer = {
       balance: num(opts['issuer-balance']),
       convention: opts.convention ?? 'signed',
       asOf: null,
-      source: '--issuer-balance',
+      source: null,
+      file: null,
     };
   }
 
@@ -91,6 +93,7 @@ export async function run(argv) {
     query: {
       account: acct.name,
       accountId: acct.id,
+      issuerInput: issuer.file ?? '--issuer-balance',
       issuerSource: issuer.source,
       issuerAsOf: issuer.asOf,
       convention: issuer.convention,

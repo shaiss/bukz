@@ -79,6 +79,9 @@ ledger's sign. Issuer file shape:
 { "balance": 123.45, "convention": "owed", "asOf": "YYYY-MM-DD", "source": "free text" }
 ```
 
+`source` is optional free text echoed as `query.issuerSource`; the file path is
+`query.issuerInput`.
+
 `gap = ledgerCleared - issuer`; `alert` is true when `|gap| > threshold`. The
 output also reports the total of the flagged `ghosts` copies on the same
 account and the residual gap if they were removed. `--fail-on-alert` exits 2

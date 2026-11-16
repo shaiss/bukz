@@ -360,3 +360,13 @@ test('cli ghosts: backfill hint counts only rows cached without the importId fie
   assert.equal(body.summary.rowsMissingImportField, 1);
   assert.match(body.hint, /^1 row\(s\) were cached before import ids were kept.*pull --full/);
 });
+
+test('ghosts: cleared twin total needs BOTH rows cleared (uncleared original + cleared copy counts once)', () => {
+  const rows = [
+    row('o', '2026-02-01', { status: 'uncleared' }),
+    row('c', '2026-02-03', { status: 'cleared' }),
+  ];
+  const s = findImportedTwins(rows).summary;
+  assert.equal(s.flaggedPairs, 1);
+  assert.equal(s.flaggedClearedTwinTotal, 0);
+});

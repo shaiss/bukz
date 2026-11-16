@@ -86,6 +86,7 @@ ledger's sign. Issuer file shape:
 
 `gap = ledgerCleared - issuer`; `alert` is true when `|gap| > threshold`. The
 output also reports the total of the flagged, cleared `ghosts` copies on the same
-account (uncleared copies don't affect the cleared balance) and the residual gap if they were removed. `--fail-on-alert` exits 2
+account (a pair counts only when both rows are cleared or reconciled; if
+either is uncleared the charge is not double-counted in the cleared balance) and the residual gap if they were removed. `--fail-on-alert` exits 2
 when alerting, for routines. Negative numbers on the command line need the
 `=` form: `--issuer-balance=-123.45`.

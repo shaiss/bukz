@@ -169,10 +169,13 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
   flagged.sort(byDate);
   allowlisted.sort(byDate);
   const twinTotal = fromCents(flagged.reduce((s, p) => s + toCents(p.twin.amount), 0));
-  // drift compares CLEARED balances, so it uses only copies explicitly marked
-  // cleared/reconciled (missing or unknown status does not count).
+  // drift compares CLEARED balances. A copy only double-counts there when BOTH
+  // rows are explicitly cleared/reconciled; an uncleared original (e.g. an
+  // authorization still pending) plus a cleared copy counts once, so it is
+  // not gap explained by ghosts. Missing/unknown status never counts.
+  const isCleared = (t) => t.status === 'cleared' || t.status === 'reconciled';
   const clearedTwinTotal = fromCents(
-    flagged.filter((p) => p.twin.status === 'cleared' || p.twin.status === 'reconciled').reduce((s, p) => s + toCents(p.twin.amount), 0)
+    flagged.filter((p) => isCleared(p.original) && isCleared(p.twin)).reduce((s, p) => s + toCents(p.twin.amount), 0)
   );
   return {
     window: { minDays, maxDays },

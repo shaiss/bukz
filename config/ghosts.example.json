@@ -1,0 +1,17 @@
+[
+  {
+    "payeePattern": "^example ride",
+    "maxAbsAmount": 3,
+    "note": "Short transit/ride fares repeat for real within days. payeePattern is a case-insensitive regex on the bank's original payee."
+  },
+  {
+    "payee": "Example Crypto Exchange",
+    "note": "Same-size recurring buys/payments are real. payee is a case-insensitive exact match on the bank's original payee."
+  },
+  {
+    "payee": "Example Streaming Service",
+    "amount": -9.99,
+    "account": "Example Card",
+    "note": "A known recurring charge. Every field set on an entry must match; both rows of a pair must match the same entry."
+  }
+]

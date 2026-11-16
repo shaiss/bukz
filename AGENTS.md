@@ -43,6 +43,10 @@ node bin/bukz.mjs sync-config     # hub Sheet → config/bills.json + config/rul
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, rule-check,
                                   #  uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
+node bin/bukz.mjs ghosts --account X  # read-only: imported duplicates (same amount + bank payee,
+                                  # 1-5 days, two YNAB import ids); --text; docs/ghosts.md
+node bin/bukz.mjs drift --account X --issuer-file F  # read-only: cleared balance vs an
+                                  # issuer balance you supply; --fail-on-alert exits 2
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
 node bin/bukz.mjs feed-serve      # famdash GET /api/feed/recent (Bearer BUKZ_API_KEY)
                                   # default 127.0.0.1:7801; docs/feed.md
@@ -77,6 +81,8 @@ src/sheets/             Google Sheets read-path: service-account JWT auth,
                         CLI flags preferred for credentials; optional env fallback;
                         never opens/rewrites `.env`. sync-config hydrates local
                         config/; outlook/rule-check keep using loadConfig.
+src/account-select.mjs  --account resolver (id | name | fragment) for ghosts/drift
+src/ghosts-config.mjs   ghost allowlist loader (--allowlist or config/ghosts.json) + --days
 src/server.mjs          the read-only localhost server behind `serve`: static
                         SPA from web/, the analysis modules for browser import,
                         and /api/data + /api/bills (re-read per request)
@@ -87,10 +93,14 @@ src/providers/          ynab.mjs, xero.mjs — normalize to the shared transacti
                         shape documented in providers/index.mjs
 src/analysis/           pure functions: stats.mjs (median/MAD/robustZ),
                         anomalies.mjs, mismatches.mjs, rules.mjs,
-                        curated-rules.mjs, sample.mjs; reporting: money.mjs
+                        curated-rules.mjs, sample.mjs, ghosts.mjs (imported
+                        duplicates), drift.mjs (issuer-balance gap); reporting: money.mjs
                         (cent math), period.mjs, pl.mjs, cashflow.mjs,
                         variance.mjs, outlook.mjs; budget work: budget.mjs
 src/commands/           one thin wrapper per CLI command (read + write/mutating)
+fixtures/generate-ghosts.mjs  writes the SYNTHETIC ghosts.json / ghosts-issuer.json /
+                        ghosts-allowlist.json demo for ghosts + drift (plants G1-G8,
+                        asserted in tests/ghosts.test.mjs)
 fixtures/generate.mjs   writes sample.json with PLANTED issues; each plant has a
                         matching test assertion in tests/. fixtures/bills.json
                         + fixtures/rules.json are demo registries;

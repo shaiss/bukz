@@ -27,6 +27,7 @@ node bin/bukz.mjs pull --full     # re-fetch everything (ignore the cache cursor
 node bin/bukz.mjs sync-config     # hub Sheet → config/bills.json + rules.json (demo: --from fixtures/sheets-hub.json)
 node bin/bukz.mjs anomalies       # (also: spot-check, mismatches, rules, rule-check, uncategorized, match, categories, budgets)
 node bin/bukz.mjs pl              # reporting: pl, cashflow, balances, variance, outlook
+node bin/bukz.mjs ghosts          # read-only imported-duplicate leads (+ drift vs an issuer balance you supply); docs/ghosts.md
 node bin/bukz.mjs serve           # localhost dashboard SPA over the cache (read-only)
 node bin/bukz.mjs feed-serve      # famdash GET /api/feed/recent (Bearer BUKZ_API_KEY; non-loopback hard-fails; see docs/feed.md)
 node bin/bukz.mjs assign          # MUTATING (YNAB budget): assign dollars; dry-run unless --yes

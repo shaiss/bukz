@@ -47,6 +47,8 @@ node bin/bukz.mjs rule-check --in fixtures/sample.json --rules fixtures/rules.js
 After sync, commands keep reading local `config/*.json` via `loadConfig` — Sheets is
 a hydrate step, not a live dependency. See `docs/sheets-config.md`.
 
+Imported duplicates: when a linked bank feed reports one charge twice a few days apart, YNAB keeps both. `ghosts --account <name>` lists those pairs (same amount and bank payee, 1–5 days apart, two YNAB import ids), with a config-driven allowlist for real repeats; `drift` compares the cleared balance with an issuer balance you supply and says how much of the gap the flagged copies explain. Both are read-only. See `docs/ghosts.md`.
+
 ## A dashboard, if you want one
 
 ```sh

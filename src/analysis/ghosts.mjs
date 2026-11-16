@@ -115,9 +115,10 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
   const groups = new Map();
   for (const t of transactions) {
     if (t.transfer) continue;
-    // A row with NO importId field predates import-id capture (needs a
-    // `pull --full`); importId: null is a real manual/file row.
-    if (t.importId === undefined) missingImportField++;
+    // A YNAB row with NO importId field predates import-id capture (needs a
+    // `pull --full`); importId: null is a real manual/file row. Other
+    // providers (Xero) never carry import ids, so they are not counted.
+    if (t.provider === 'ynab' && t.importId === undefined) missingImportField++;
     const parsed = parseImportId(t.importId);
     if (!parsed) {
       skippedNoImportId++;

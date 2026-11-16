@@ -38,7 +38,8 @@ for a triage queue.
 the cached transaction shape. Rows cached before this change lack them until a
 `node bin/bukz.mjs pull --full` refreshes the cache (incremental pulls only
 return changed rows). `ghosts` reports these as `summary.rowsMissingImportField` and adds a
-`hint`; manual rows (`importId: null`) are not counted.
+`hint`; manual rows (`importId: null`) and other providers' rows (Xero has no
+import ids) are not counted.
 
 ### Allowlist
 

@@ -268,7 +268,7 @@ test('cli ghosts: backfill hint fires for a pre-import-id cache that also holds 
     wf(path, JSON.stringify({
       pulledAt: '2026-01-05T00:00:00.000Z', provider: 'fixture',
       transactions: [
-        { id: 'l1', date: '2026-01-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', transfer: false },
+        { id: 'l1', date: '2026-01-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', transfer: false, provider: 'ynab' },
         { id: 'l2', date: '2026-01-02', amount: 50, payee: 'Transfer : Demo Checking', account: 'Demo Card', transfer: true },
       ],
     }));
@@ -352,7 +352,7 @@ test('cli ghosts: no backfill hint for a manual-only account (importId: null)', 
 
 test('cli ghosts: backfill hint counts only rows cached without the importId field', async () => {
   const body = await ghostsOn([
-    { id: 'l1', date: '2026-02-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', transfer: false },
+    { id: 'l1', date: '2026-02-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', transfer: false, provider: 'ynab' },
     { id: 'm1', date: '2026-02-02', amount: -6, payee: 'Example Shop', account: 'Demo Card', importId: null, transfer: false },
     { id: 'i1', date: '2026-02-03', amount: -7, payee: 'Example Shop', account: 'Demo Card', importId: 'YNAB:-7000:2026-02-03:1', transfer: false },
     { id: 't1', date: '2026-02-04', amount: 50, payee: 'Transfer', account: 'Demo Card', transfer: true },
@@ -369,4 +369,12 @@ test('ghosts: cleared twin total needs BOTH rows cleared (uncleared original + c
   const s = findImportedTwins(rows).summary;
   assert.equal(s.flaggedPairs, 1);
   assert.equal(s.flaggedClearedTwinTotal, 0);
+});
+
+test('cli ghosts: no backfill hint for a provider that never has import ids (Xero)', async () => {
+  const body = await ghostsOn([
+    { id: 'x1', date: '2026-02-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', transfer: false, provider: 'xero' },
+  ]);
+  assert.equal(body.hint, null);
+  assert.equal(body.summary.rowsMissingImportField, 0);
 });

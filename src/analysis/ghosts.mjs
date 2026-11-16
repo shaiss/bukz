@@ -49,6 +49,16 @@ export function compileAllowlist(entries = []) {
   if (!Array.isArray(entries)) throw new Error('Ghost allowlist must be a JSON array');
   return entries.map((e, i) => {
     if (!e || typeof e !== 'object') throw new Error(`Allowlist entry ${i} must be an object`);
+    for (const k of ['amount', 'maxAbsAmount']) {
+      if (e[k] != null && !(typeof e[k] === 'number' && Number.isFinite(e[k]))) {
+        throw new Error(`Allowlist entry ${i}: ${k} must be a finite number`);
+      }
+    }
+    for (const k of ['payee', 'payeePattern', 'account']) {
+      if (e[k] != null && typeof e[k] !== 'string') {
+        throw new Error(`Allowlist entry ${i}: ${k} must be a string`);
+      }
+    }
     let re = null;
     if (e.payeePattern != null) {
       try {
@@ -153,6 +163,10 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
   flagged.sort(byDate);
   allowlisted.sort(byDate);
   const twinTotal = fromCents(flagged.reduce((s, p) => s + toCents(p.twin.amount), 0));
+  // drift compares CLEARED balances, so it uses only copies that count there.
+  const clearedTwinTotal = fromCents(
+    flagged.filter((p) => p.twin.status !== 'uncleared').reduce((s, p) => s + toCents(p.twin.amount), 0)
+  );
   return {
     window: { minDays, maxDays },
     flagged,
@@ -160,6 +174,7 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
     summary: {
       flaggedPairs: flagged.length,
       flaggedTwinTotal: twinTotal,
+      flaggedClearedTwinTotal: clearedTwinTotal,
       allowlistedPairs: allowlisted.length,
       rowsWithoutImportId: skippedNoImportId,
     },

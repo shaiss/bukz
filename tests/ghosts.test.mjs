@@ -206,10 +206,18 @@ test('ghosts/drift never touch a provider (read-only by construction)', () => {
   }
 });
 
-test('fixture generator is byte-stable', () => {
-  const before = readFileSync(resolve(ROOT, 'fixtures/ghosts.json'), 'utf8');
-  execFileSync(process.execPath, [resolve(ROOT, 'fixtures/generate-ghosts.mjs')], { cwd: ROOT });
-  assert.equal(readFileSync(resolve(ROOT, 'fixtures/ghosts.json'), 'utf8'), before);
+test('fixture generator is byte-stable (writes to a temp dir, never the repo)', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(resolve(tmpdir(), 'bukz-ghosts-gen-'));
+  try {
+    execFileSync(process.execPath, [resolve(ROOT, 'fixtures/generate-ghosts.mjs'), dir], { cwd: ROOT });
+    for (const f of ['ghosts.json', 'ghosts-issuer.json', 'ghosts-allowlist.json']) {
+      assert.equal(readFileSync(resolve(dir, f), 'utf8'), readFileSync(resolve(ROOT, 'fixtures', f), 'utf8'), f);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('formatTwinsText: no-flag output omits the verdict caveat', () => {
@@ -266,4 +274,20 @@ test('cli ghosts: backfill hint fires for a pre-import-id cache that also holds 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('allowlist: non-numeric amount fields and non-string payee fields are rejected', () => {
+  assert.throws(() => compileAllowlist([{ maxAbsAmount: 'three' }]), /maxAbsAmount must be a finite number/);
+  assert.throws(() => compileAllowlist([{ amount: Infinity }]), /amount must be a finite number/);
+  assert.throws(() => compileAllowlist([{ payee: 5 }]), /payee must be a string/);
+});
+
+test('ghosts: uncleared copies are excluded from the cleared total drift uses', () => {
+  const rows = [
+    { id: 'a', date: '2026-01-01', amount: -40, payee: 'Example Shop', account: 'A', status: 'cleared', importId: 'YNAB:-40000:2026-01-01:1' },
+    { id: 'b', date: '2026-01-03', amount: -40, payee: 'Example Shop', account: 'A', status: 'uncleared', importId: 'YNAB:-40000:2026-01-03:1' },
+  ];
+  const s = findImportedTwins(rows).summary;
+  assert.equal(s.flaggedTwinTotal, -40);
+  assert.equal(s.flaggedClearedTwinTotal, 0);
 });

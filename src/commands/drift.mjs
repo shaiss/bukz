@@ -72,7 +72,7 @@ export async function run(argv) {
     issuerBalance: issuer.balance,
     convention: issuer.convention,
     threshold: num(opts.threshold, 1),
-    twinTotal: twins.summary.flaggedTwinTotal,
+    twinTotal: twins.summary.flaggedClearedTwinTotal,
   });
   if (drift.alert && opts['fail-on-alert']) process.exitCode = 2;
 
@@ -81,7 +81,7 @@ export async function run(argv) {
       `Balance drift — ${acct.name}: ledger cleared ${drift.ledgerCleared.toFixed(2)} vs issuer ${drift.issuer.toFixed(2)}` +
         `${issuer.asOf ? ` (as of ${issuer.asOf})` : ''}`,
       `Gap ${drift.gap.toFixed(2)} — ${drift.alert ? `ALERT (over ${drift.threshold.toFixed(2)})` : 'within threshold'}`,
-      `Flagged imported-duplicate copies: ${twins.summary.flaggedPairs}, total ${drift.explained.byFlaggedTwins.toFixed(2)}; ` +
+      `Flagged imported-duplicate copies: ${twins.summary.flaggedPairs}, cleared total ${drift.explained.byFlaggedTwins.toFixed(2)}; ` +
         `residual after removing them ${drift.explained.residualAfterTwins.toFixed(2)}` +
         `${drift.explained.residualAlert ? ' (still over threshold)' : ''}`,
     ];

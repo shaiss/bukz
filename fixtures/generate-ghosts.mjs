@@ -18,7 +18,7 @@
 //   .json) excludes the G1+G2 copies, so drift's gap == the flagged total and
 //   the residual is 0.
 //
-// Run: node fixtures/generate-ghosts.mjs
+// Run: node fixtures/generate-ghosts.mjs [OUT_DIR]
 
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -97,7 +97,8 @@ const fixture = {
   transactions,
 };
 
-const dir = dirname(fileURLToPath(import.meta.url));
+// Optional output dir (tests write to a temp dir and diff against the committed copies).
+const dir = process.argv[2] ? resolve(process.argv[2]) : dirname(fileURLToPath(import.meta.url));
 writeFileSync(resolve(dir, 'ghosts.json'), JSON.stringify(fixture, null, 2) + '\n');
 writeFileSync(
   resolve(dir, 'ghosts-issuer.json'),

@@ -25,7 +25,8 @@ node bin/bukz.mjs ghosts --in fixtures/ghosts.json --account "Demo Card" \
 Flags pairs on one account with the same amount and the same original bank
 payee (`importPayeeNameOriginal`, falling back to `payee`), 1–5 days apart,
 where both rows carry a YNAB linked-import id and the ids' date segments differ.
-Pairing is one-to-one per (account, amount, payee) group, so three identical
+Rows on two accounts never pair when both carry an `accountId`; a row
+without one (cached earlier) falls back to matching by account name. Pairing is one-to-one per (account, amount, payee) group, so three identical
 charges plus three copies give three pairs. Transfers and rows without a linked
 import id (manual, API or file imports) are skipped and counted.
 
@@ -36,7 +37,8 @@ for a triage queue.
 **Backfill:** `importId`, `importPayeeNameOriginal` and `accountId` are new on
 the cached transaction shape. Rows cached before this change lack them until a
 `node bin/bukz.mjs pull --full` refreshes the cache (incremental pulls only
-return changed rows).
+return changed rows). `ghosts` reports these as `summary.rowsMissingImportField` and adds a
+`hint`; manual rows (`importId: null`) are not counted.
 
 ### Allowlist
 

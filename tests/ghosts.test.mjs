@@ -299,3 +299,64 @@ test('ghosts: uncleared copies are excluded from the cleared total drift uses', 
   const rec = rows.map((r) => ({ ...r, status: 'reconciled' }));
   assert.equal(findImportedTwins(rec).summary.flaggedClearedTwinTotal, -40);
 });
+
+// ── owner follow-ups: account identity + backfill hint ───────────────────
+const row = (id, date, extra = {}) => ({
+  id, date, amount: -40, payee: 'Example Shop', account: 'Shared Name', status: 'cleared',
+  importId: `YNAB:-40000:${date}:1`, importPayeeNameOriginal: 'Example Shop', ...extra,
+});
+
+test('ghosts: same-name accounts with different ids never pair', () => {
+  const rows = [row('x1', '2026-02-01', { accountId: 'acc-x' }), row('y1', '2026-02-03', { accountId: 'acc-y' })];
+  assert.equal(findImportedTwins(rows).flagged.length, 0);
+});
+
+test('ghosts: same-name, different-id accounts still pair within each account', () => {
+  const rows = [
+    row('x1', '2026-02-01', { accountId: 'acc-x' }), row('y1', '2026-02-02', { accountId: 'acc-y' }),
+    row('x2', '2026-02-03', { accountId: 'acc-x' }), row('y2', '2026-02-04', { accountId: 'acc-y' }),
+  ];
+  const pairs = findImportedTwins(rows).flagged.map((p) => `${p.original.id}>${p.twin.id}`).sort();
+  assert.deepEqual(pairs, ['x1>x2', 'y1>y2']);
+});
+
+test('ghosts: an old row without accountId pairs with a new row on the same account name', () => {
+  const rows = [row('old', '2026-02-01'), row('new', '2026-02-03', { accountId: 'acc-x' })];
+  assert.deepEqual(findImportedTwins(rows).flagged.map((p) => `${p.original.id}>${p.twin.id}`), ['old>new']);
+});
+
+const ghostsOn = async (transactions) => {
+  const { mkdtempSync, writeFileSync: wf, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(resolve(tmpdir(), 'bukz-ghosts-hint-'));
+  try {
+    const path = resolve(dir, 'cache.json');
+    wf(path, JSON.stringify({ pulledAt: '2026-02-05T00:00:00.000Z', provider: 'fixture', transactions }));
+    const r = cli('ghosts', '--in', path, '--account', 'Demo Card', '--allowlist', 'fixtures/ghosts-allowlist.json');
+    assert.equal(r.status, 0, r.stderr);
+    return JSON.parse(r.stdout);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+test('cli ghosts: no backfill hint for a manual-only account (importId: null)', async () => {
+  const body = await ghostsOn([
+    { id: 'm1', date: '2026-02-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', importId: null, transfer: false },
+    { id: 'm2', date: '2026-02-02', amount: -6, payee: 'Example Shop', account: 'Demo Card', importId: null, transfer: false },
+  ]);
+  assert.equal(body.hint, null);
+  assert.equal(body.summary.rowsMissingImportField, 0);
+  assert.equal(body.summary.rowsWithoutImportId, 2);
+});
+
+test('cli ghosts: backfill hint counts only rows cached without the importId field', async () => {
+  const body = await ghostsOn([
+    { id: 'l1', date: '2026-02-01', amount: -5, payee: 'Example Shop', account: 'Demo Card', transfer: false },
+    { id: 'm1', date: '2026-02-02', amount: -6, payee: 'Example Shop', account: 'Demo Card', importId: null, transfer: false },
+    { id: 'i1', date: '2026-02-03', amount: -7, payee: 'Example Shop', account: 'Demo Card', importId: 'YNAB:-7000:2026-02-03:1', transfer: false },
+    { id: 't1', date: '2026-02-04', amount: 50, payee: 'Transfer', account: 'Demo Card', transfer: true },
+  ]);
+  assert.equal(body.summary.rowsMissingImportField, 1);
+  assert.match(body.hint, /^1 row\(s\) were cached before import ids were kept.*pull --full/);
+});

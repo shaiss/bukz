@@ -111,16 +111,21 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
   }
   const allow = compileAllowlist(allowlist);
   let skippedNoImportId = 0;
+  let missingImportField = 0;
   const groups = new Map();
   for (const t of transactions) {
     if (t.transfer) continue;
+    // A row with NO importId field predates import-id capture (needs a
+    // `pull --full`); importId: null is a real manual/file row.
+    if (t.importId === undefined) missingImportField++;
     const parsed = parseImportId(t.importId);
     if (!parsed) {
       skippedNoImportId++;
       continue;
     }
-    // Group by account NAME first: rows cached before accountId existed carry
-    // only the name, newly pulled rows carry both, and the two must still pair.
+    // Bucket by account name (falling back to id) so rows cached before
+    // accountId existed can still meet newly pulled rows; the pairing loop
+    // then keeps accounts apart whenever BOTH rows carry an accountId.
     const key = [t.account || t.accountId || '', toCents(t.amount), norm(originalPayee(t))].join('\u0000');
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push({ t, parsed });
@@ -141,6 +146,7 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
         const gap = dayDiff(a.t.date, b.t.date);
         if (gap < minDays || gap > maxDays) continue;
         if (a.parsed.date === b.parsed.date) continue; // same import date = not this pattern
+        if (a.t.accountId && b.t.accountId && a.t.accountId !== b.t.accountId) continue; // same name, different accounts
         used.add(i);
         used.add(j);
         const hit = allow.find((e) => e.test(a.t) && e.test(b.t));
@@ -178,6 +184,7 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
       flaggedClearedTwinTotal: clearedTwinTotal,
       allowlistedPairs: allowlisted.length,
       rowsWithoutImportId: skippedNoImportId,
+      rowsMissingImportField: missingImportField,
     },
   };
 }

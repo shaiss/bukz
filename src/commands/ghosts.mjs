@@ -26,13 +26,13 @@ export async function run(argv) {
   const rows = accountRows(data.transactions, acct);
   const result = findImportedTwins(rows, { minDays, maxDays, allowlist: allow.entries });
 
-  // Backfill hint: every eligible (non-transfer) row lacks an import id, which
-  // means the cache predates import-id capture rather than "no linked imports".
-  const eligible = rows.filter((t) => !t.transfer).length;
-  const hint =
-    eligible > 0 && result.summary.rowsWithoutImportId === eligible
-      ? 'No rows carry import ids yet — run `node bin/bukz.mjs pull --full` once to backfill them.'
-      : null;
+  // Backfill hint: only when non-transfer rows were cached before import ids
+  // were captured (no importId field at all). Manual rows (importId: null)
+  // legitimately have none and never trigger it.
+  const missing = result.summary.rowsMissingImportField;
+  const hint = missing > 0
+    ? `${missing} row(s) were cached before import ids were kept — run \`node bin/bukz.mjs pull --full\` once to backfill them.`
+    : null;
 
   if (opts.text) {
     let text = formatTwinsText(result, { account: acct.name });

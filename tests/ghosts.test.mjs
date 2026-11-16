@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
@@ -210,10 +210,14 @@ test('fixture generator is byte-stable (writes to a temp dir, never the repo)', 
   const { mkdtempSync, rmSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const dir = mkdtempSync(resolve(tmpdir(), 'bukz-ghosts-gen-'));
+  const files = ['ghosts.json', 'ghosts-issuer.json', 'ghosts-allowlist.json'];
+  const repoFile = (f) => resolve(ROOT, 'fixtures', f);
+  const snapshot = Object.fromEntries(files.map((f) => [f, statSync(repoFile(f)).mtimeMs]));
   try {
     execFileSync(process.execPath, [resolve(ROOT, 'fixtures/generate-ghosts.mjs'), dir], { cwd: ROOT });
-    for (const f of ['ghosts.json', 'ghosts-issuer.json', 'ghosts-allowlist.json']) {
-      assert.equal(readFileSync(resolve(dir, f), 'utf8'), readFileSync(resolve(ROOT, 'fixtures', f), 'utf8'), f);
+    for (const f of files) {
+      assert.equal(readFileSync(resolve(dir, f), 'utf8'), readFileSync(repoFile(f), 'utf8'), f);
+      assert.equal(statSync(repoFile(f)).mtimeMs, snapshot[f], `${f} in the repo must not be rewritten`);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -290,4 +294,8 @@ test('ghosts: uncleared copies are excluded from the cleared total drift uses', 
   const s = findImportedTwins(rows).summary;
   assert.equal(s.flaggedTwinTotal, -40);
   assert.equal(s.flaggedClearedTwinTotal, 0);
+  const noStatus = rows.map((r) => ({ ...r, status: undefined }));
+  assert.equal(findImportedTwins(noStatus).summary.flaggedClearedTwinTotal, 0);
+  const rec = rows.map((r) => ({ ...r, status: 'reconciled' }));
+  assert.equal(findImportedTwins(rec).summary.flaggedClearedTwinTotal, -40);
 });

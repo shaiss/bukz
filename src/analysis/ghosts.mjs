@@ -163,9 +163,10 @@ export function findImportedTwins(transactions, { minDays = 1, maxDays = 5, allo
   flagged.sort(byDate);
   allowlisted.sort(byDate);
   const twinTotal = fromCents(flagged.reduce((s, p) => s + toCents(p.twin.amount), 0));
-  // drift compares CLEARED balances, so it uses only copies that count there.
+  // drift compares CLEARED balances, so it uses only copies explicitly marked
+  // cleared/reconciled (missing or unknown status does not count).
   const clearedTwinTotal = fromCents(
-    flagged.filter((p) => p.twin.status !== 'uncleared').reduce((s, p) => s + toCents(p.twin.amount), 0)
+    flagged.filter((p) => p.twin.status === 'cleared' || p.twin.status === 'reconciled').reduce((s, p) => s + toCents(p.twin.amount), 0)
   );
   return {
     window: { minDays, maxDays },

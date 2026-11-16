@@ -212,12 +212,16 @@ test('fixture generator is byte-stable (writes to a temp dir, never the repo)', 
   const dir = mkdtempSync(resolve(tmpdir(), 'bukz-ghosts-gen-'));
   const files = ['ghosts.json', 'ghosts-issuer.json', 'ghosts-allowlist.json'];
   const repoFile = (f) => resolve(ROOT, 'fixtures', f);
-  const snapshot = Object.fromEntries(files.map((f) => [f, statSync(repoFile(f)).mtimeMs]));
+  const snapshot = Object.fromEntries(
+    files.map((f) => [f, { mtimeMs: statSync(repoFile(f)).mtimeMs, content: readFileSync(repoFile(f), 'utf8') }])
+  );
   try {
     execFileSync(process.execPath, [resolve(ROOT, 'fixtures/generate-ghosts.mjs'), dir], { cwd: ROOT });
     for (const f of files) {
-      assert.equal(readFileSync(resolve(dir, f), 'utf8'), readFileSync(repoFile(f), 'utf8'), f);
-      assert.equal(statSync(repoFile(f)).mtimeMs, snapshot[f], `${f} in the repo must not be rewritten`);
+      const after = readFileSync(repoFile(f), 'utf8');
+      assert.equal(readFileSync(resolve(dir, f), 'utf8'), snapshot[f].content, f);
+      assert.equal(after, snapshot[f].content, `${f} in the repo must keep the same content`);
+      assert.equal(statSync(repoFile(f)).mtimeMs, snapshot[f].mtimeMs, `${f} in the repo must not be rewritten`);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
